@@ -1,6 +1,7 @@
 package com.backend.java_backend.Classes;
 
 import jakarta.persistence.*;
+import org.springframework.data.annotation.CreatedDate;
 
 import java.util.Date;
 import java.util.Objects;
