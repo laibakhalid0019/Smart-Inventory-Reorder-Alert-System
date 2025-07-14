@@ -10,7 +10,7 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
-    private String name;
+    private String username;
     private String email;
     private String password;
     @Enumerated(EnumType.STRING)
@@ -25,8 +25,8 @@ public class User {
         return id;
     }
 
-    public String getName() {
-        return name;
+    public String getUsername() {
+        return username;
     }
 
     public String getEmail() {
@@ -45,9 +45,9 @@ public class User {
         this.role = role;
     }
 
-    public User(int id, String name, String email, String password, Role role) {
+    public User(int id, String username, String email, String password, Role role) {
         this.id = id;
-        this.name = name;
+        this.username = username;
         this.email = email;
         this.password = password;
         this.role = role;
@@ -60,8 +60,8 @@ public class User {
         this.id = id;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setUsername(String name) {
+        this.username = name;
     }
 
     public void setEmail(String email) {
@@ -77,19 +77,19 @@ public class User {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         User user = (User) o;
-        return id == user.id && Objects.equals(name, user.name) && Objects.equals(email, user.email) && Objects.equals(password, user.password) && Objects.equals(role, user.role);
+        return id == user.id && Objects.equals(username, user.username) && Objects.equals(email, user.email) && Objects.equals(password, user.password) && Objects.equals(role, user.role);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, email, password, role);
+        return Objects.hash(id, username, email, password, role);
     }
 
     @Override
     public String toString() {
         return "User{" +
                 "id=" + id +
-                ", name='" + name + '\'' +
+                ", name='" + username + '\'' +
                 ", email='" + email + '\'' +
                 ", password='" + password + '\'' +
                 ", role='" + role + '\'' +
