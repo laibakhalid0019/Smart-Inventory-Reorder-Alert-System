@@ -14,6 +14,14 @@ public class Transaction {
     private int quanity;
     private Date timestamp;
 
+    @JoinColumn(name = "product_id")
+    @ManyToOne
+    private Product product;
+
+    @JoinColumn(name = "user_id")
+    @ManyToOne
+    private User user;
+
     @Enumerated(EnumType.STRING)
     private TransactionType type;
 
