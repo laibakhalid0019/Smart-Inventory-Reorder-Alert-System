@@ -6,7 +6,7 @@ public class AuthResponse {
     private String role;
     private String username;
 
-    public AuthResponse(String token, String name) {
+    public AuthResponse(String token, String name, String username) {
         this.token = token;
         this.username = name;
         this.role = name;
