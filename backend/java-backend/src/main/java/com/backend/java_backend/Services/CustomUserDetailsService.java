@@ -1,4 +1,4 @@
-package com.backend.java_backend.Classes;
+package com.backend.java_backend.Services;
 import com.backend.java_backend.Repos.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;

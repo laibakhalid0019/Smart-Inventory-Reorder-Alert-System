@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/Smart-Inventory-Reorder-Alert-System.iml" filepath="$PROJECT_DIR$/.idea/Smart-Inventory-Reorder-Alert-System.iml" />
+      <module fileurl="file://$PROJECT_DIR$/backend/java-backend/java-backend.iml" filepath="$PROJECT_DIR$/backend/java-backend/java-backend.iml" />
     </modules>
   </component>
 </project>

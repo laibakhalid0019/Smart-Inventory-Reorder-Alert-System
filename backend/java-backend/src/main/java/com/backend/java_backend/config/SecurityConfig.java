@@ -1,6 +1,6 @@
 package com.backend.java_backend.config;
 
-import com.backend.java_backend.Classes.CustomUserDetailsService;
+import com.backend.java_backend.Services.CustomUserDetailsService;
 import com.backend.java_backend.Utils.JwtAuthenticationFilter;
 import com.backend.java_backend.Utils.JwtUtils;
 import org.springframework.context.annotation.Bean;
