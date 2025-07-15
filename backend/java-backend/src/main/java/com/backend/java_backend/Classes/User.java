@@ -1,18 +1,23 @@
 package com.backend.java_backend.Classes;
 
 import jakarta.persistence.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
 @Table(name = "users")
-public class User {
+public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
     private String username;
     private String email;
-    private String password;
+    private String pass;
     @Enumerated(EnumType.STRING)
     private Role role;
     public enum Role {
@@ -29,12 +34,42 @@ public class User {
         return username;
     }
 
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
+
     public String getEmail() {
         return email;
     }
 
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority(role.name()));
+    }
+
+    @Override
     public String getPassword() {
-        return password;
+        return pass;
+    }
+
+    public String getPass() {
+        return pass;
     }
 
     public Role getRole() {
@@ -49,7 +84,7 @@ public class User {
         this.id = id;
         this.username = username;
         this.email = email;
-        this.password = password;
+        this.pass = password;
         this.role = role;
     }
 
@@ -68,8 +103,8 @@ public class User {
         this.email = email;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setPass(String password) {
+        this.pass = password;
     }
 
 
@@ -77,12 +112,12 @@ public class User {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         User user = (User) o;
-        return id == user.id && Objects.equals(username, user.username) && Objects.equals(email, user.email) && Objects.equals(password, user.password) && Objects.equals(role, user.role);
+        return id == user.id && Objects.equals(username, user.username) && Objects.equals(email, user.email) && Objects.equals(pass, user.pass) && Objects.equals(role, user.role);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, username, email, password, role);
+        return Objects.hash(id, username, email, pass, role);
     }
 
     @Override
@@ -91,7 +126,7 @@ public class User {
                 "id=" + id +
                 ", name='" + username + '\'' +
                 ", email='" + email + '\'' +
-                ", password='" + password + '\'' +
+                ", password='" + pass + '\'' +
                 ", role='" + role + '\'' +
                 '}';
     }

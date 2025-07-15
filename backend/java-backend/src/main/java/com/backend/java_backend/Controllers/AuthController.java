@@ -1,39 +1,63 @@
 package com.backend.java_backend.Controllers;
-
-
 import com.backend.java_backend.Classes.User;
-import com.backend.java_backend.DTOs.AuthResponse;
 import com.backend.java_backend.DTOs.LoginRequest;
 import com.backend.java_backend.DTOs.SignupRequest;
 import com.backend.java_backend.Repos.UserRepo;
-import com.backend.java_backend.Services.AuthService;
-import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
-@RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
+@RequestMapping("/auth")
 public class AuthController {
 
     @Autowired
-    private AuthService authService;
+    private UserRepo userRepository;
 
-    @PostMapping(value = "/signup")
-    public ResponseEntity<AuthResponse> signup(@RequestBody SignupRequest request){
-        return ResponseEntity.ok(authService.signup(request));
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+
+    @PostMapping("/signup")
+    public ResponseEntity<String> signup(@RequestBody SignupRequest signupRequest) {
+        if (signupRequest.getUsername() == null || signupRequest.getUsername().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Username is required");
+        }
+
+        if (signupRequest.getPassword() == null || signupRequest.getPassword().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Password is required");
+        }
+
+        if (userRepository.existsByUsername(signupRequest.getUsername())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Username is already in use");
+        }
+
+        User user = new User();
+        user.setUsername(signupRequest.getUsername());
+        user.setPass(passwordEncoder.encode(signupRequest.getPassword()));
+        user.setEmail(signupRequest.getEmail());
+        user.setRole(signupRequest.getRole());
+
+        userRepository.save(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully");
     }
 
-    @GetMapping("/get")
-    public int get(){
-        return 1;
-    }
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+        Optional<User> existingUser = userRepository.findByUsername(loginRequest.getUsername());
 
-    @PostMapping(value = "/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request){
-        return ResponseEntity.ok(authService.login(request));
+        if (existingUser.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Username does not exist");
+        }
+
+        User user = existingUser.get();
+        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPass())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid password");
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body("Login successful");
     }
 }
