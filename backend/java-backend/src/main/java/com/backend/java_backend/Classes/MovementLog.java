@@ -1,9 +1,11 @@
 package com.backend.java_backend.Classes;
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import lombok.Data;
 
+import java.time.LocalDateTime;
 @Entity
 @Table(name = "movement_logs")
+@Data
 public class MovementLog {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -23,4 +25,5 @@ public class MovementLog {
 
     @Column(name = "logged_at")
     private LocalDateTime loggedAt = LocalDateTime.now();
+
 }

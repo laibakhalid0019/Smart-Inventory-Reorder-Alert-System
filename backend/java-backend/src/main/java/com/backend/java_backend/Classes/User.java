@@ -63,21 +63,21 @@ public class User implements UserDetails {
         return List.of(new SimpleGrantedAuthority(role.name()));
     }
 
-    @Override
-    public String getPassword() {
-        return pass;
-    }
-
-    public String getPass() {
-        return pass;
-    }
-
     public Role getRole() {
         return role;
     }
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    @Override
+    public String getPassword() {
+        return pass;
+    }
+
+    public void setPassword(String pass) {
+        this.pass = pass;
     }
 
     public User(int id, String username, String email, String password, Role role) {

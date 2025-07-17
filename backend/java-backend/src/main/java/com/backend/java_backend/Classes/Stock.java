@@ -1,5 +1,6 @@
 package com.backend.java_backend.Classes;
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -8,6 +9,7 @@ import java.time.LocalDateTime;
 @Table(name = "stock", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"product_id", "user_id"})
 })
+@Data
 public class Stock {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,10 +25,10 @@ public class Stock {
     private Supplier supplier;
 
     @Column(name = "cost_price")
-    private BigDecimal costPrice;
+    private double costPrice;
 
     @Column(name = "retail_price")
-    private BigDecimal retailPrice;
+    private double retailPrice;
 
     private Integer quantity;
     private Integer minThreshold;

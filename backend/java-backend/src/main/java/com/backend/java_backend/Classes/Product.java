@@ -19,8 +19,11 @@ public class Product {
     @Column(unique = true)
     private String sku;
 
-    private String unit;
     private String barcode;
+    private double retail_price;
+    private double cost_price;
+    private int mst;
+    private int quantity;
 
     @ManyToOne
     @JoinColumn(name = "created_by")
