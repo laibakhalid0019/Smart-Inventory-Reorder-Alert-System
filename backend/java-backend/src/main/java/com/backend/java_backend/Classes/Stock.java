@@ -1,36 +1,30 @@
 package com.backend.java_backend.Classes;
-import jakarta.persistence.*;
 
-import java.math.BigDecimal;
+import jakarta.persistence.*;
+import lombok.Data;
+
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "stock", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"product_id", "user_id"})
-})
+@Data
+@Table(name = "stocks")
 public class Stock {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne @JoinColumn(name = "product_id")
+    @ManyToOne
+    @JoinColumn(name = "retailer_id")
+    private User retailer;
+
+    @ManyToOne
+    @JoinColumn(name = "product_id")
     private Product product;
 
-    @ManyToOne @JoinColumn(name = "user_id")
-    private User owner; // Retailer or Distributor
+    private int quantity;
+    private int min_threshold;
+    private LocalDateTime expiry_date;
 
-    @ManyToOne @JoinColumn(name = "supplier_id")
-    private Supplier supplier;
-
-    @Column(name = "cost_price")
-    private BigDecimal costPrice;
-
-    @Column(name = "retail_price")
-    private BigDecimal retailPrice;
-
-    private Integer quantity;
-    private Integer minThreshold;
-
-    @Column(name = "last_updated")
-    private LocalDateTime lastUpdated = LocalDateTime.now();
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
 }

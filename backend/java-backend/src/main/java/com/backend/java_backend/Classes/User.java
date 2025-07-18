@@ -1,6 +1,7 @@
 package com.backend.java_backend.Classes;
 
 import jakarta.persistence.*;
+import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,28 +11,25 @@ import java.util.List;
 import java.util.Objects;
 
 @Entity
+@Data
 @Table(name = "users")
 public class User implements UserDetails {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private int id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     private String username;
+
+    @Column(unique = true)
     private String email;
     private String pass;
+    private String address;
+    private String phone;
     @Enumerated(EnumType.STRING)
     private Role role;
     public enum Role {
         RETAILER,
         DISTRIBUTOR,
-        ADMIN
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public String getUsername() {
-        return username;
+        DELIVERY
     }
 
     @Override
@@ -54,33 +52,23 @@ public class User implements UserDetails {
         return true;
     }
 
-    public String getEmail() {
-        return email;
-    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));
     }
 
+
     @Override
     public String getPassword() {
         return pass;
     }
 
-    public String getPass() {
-        return pass;
+    public void setPassword(String pass) {
+        this.pass = pass;
     }
 
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
-    public User(int id, String username, String email, String password, Role role) {
+    public User(long id, String username, String email, String password, Role role) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -89,22 +77,6 @@ public class User implements UserDetails {
     }
 
     public User() {
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public void setUsername(String name) {
-        this.username = name;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public void setPass(String password) {
-        this.pass = password;
     }
 
 

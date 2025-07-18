@@ -48,6 +48,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+
+        System.out.println("SecurityConfig: Configured role-based access control.");
+        System.out.println("SecurityConfig: JWT Authentication Filter added.");
         return http.build();
     }
 
