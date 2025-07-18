@@ -24,10 +24,11 @@ public class Product {
     private double cost_price;
     private int mst;
     private int quantity;
+    private LocalDateTime expiry_date;
 
     @ManyToOne
-    @JoinColumn(name = "created_by")
-    private User createdBy;
+    @JoinColumn(name = "distributor_id")
+    private User distributor;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
