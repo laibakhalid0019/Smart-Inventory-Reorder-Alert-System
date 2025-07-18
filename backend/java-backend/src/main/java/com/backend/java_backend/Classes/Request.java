@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "requests")
+@Data
 public class Request {
 
 
