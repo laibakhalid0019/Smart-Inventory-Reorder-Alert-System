@@ -1,4 +1,4 @@
-package com.backend.java_backend.Controllers.Delivery;
+package com.backend.java_backend.Controllers.Retailer;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -7,10 +7,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/delivery")
-public class DeliveryAgentController {
+@RequestMapping("/retailer")
+public class RetailerController {
+
     @GetMapping("/get-info")
     public ResponseEntity<?> getInfo(){
-        return ResponseEntity.status(HttpStatus.OK).body("DELIVERY AGENT");
+        return ResponseEntity.status(HttpStatus.OK).body("RETAILER");
     }
+
 }
