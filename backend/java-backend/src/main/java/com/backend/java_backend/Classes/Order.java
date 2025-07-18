@@ -33,8 +33,13 @@ public class Order {
 
     private Integer quantity;
 
-    private String status; // paid, dispatched, delivered
-
+    private Request.Status status = Request.Status.PENDING;
+    public enum Status {
+        PENDING,
+        PAID,
+        DISPATCHED,
+        DELIVERED
+    }
     private Timestamp paymentTimestamp;
 
     @ManyToOne

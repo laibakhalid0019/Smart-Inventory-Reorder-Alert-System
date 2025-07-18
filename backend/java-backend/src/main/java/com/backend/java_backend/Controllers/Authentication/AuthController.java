@@ -1,11 +1,10 @@
-package com.backend.java_backend.Controllers;
+package com.backend.java_backend.Controllers.Authentication;
 
 import com.backend.java_backend.Classes.User;
 import com.backend.java_backend.DTOs.LoginRequest;
 import com.backend.java_backend.DTOs.SignupRequest;
 import com.backend.java_backend.Repos.UserRepo;
 import com.backend.java_backend.Utils.JwtUtils;
-import com.backend.java_backend.DTOs.AuthResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
