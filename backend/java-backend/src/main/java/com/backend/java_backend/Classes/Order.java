@@ -1,11 +1,13 @@
 package com.backend.java_backend.Classes;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.security.Timestamp;
 
 @Entity
 @Table(name = "orders")
+@Data
 public class Order {
 
     @Id
@@ -33,7 +35,7 @@ public class Order {
 
     private Integer quantity;
 
-    private Request.Status status = Request.Status.PENDING;
+    private Order.Status status = Order.Status.PENDING;
     public enum Status {
         PENDING,
         PAID,

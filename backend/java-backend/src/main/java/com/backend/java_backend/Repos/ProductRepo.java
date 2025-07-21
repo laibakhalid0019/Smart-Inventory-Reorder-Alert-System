@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 public interface ProductRepo extends JpaRepository<Product,Integer> {
     //delete a product by SKU
@@ -14,6 +15,6 @@ public interface ProductRepo extends JpaRepository<Product,Integer> {
     Boolean deleteProductById(long id);
     //get all products
     List<Product> findAllByName(String username);
-    Product findById(long id);
+    Optional<Product> findById(long id);
     Product findBySku(String sku);
 }

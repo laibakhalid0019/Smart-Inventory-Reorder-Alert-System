@@ -31,7 +31,10 @@ public class RetailerRequestController {
 
     @PostMapping("/generate-request")
     public ResponseEntity<?> generateRequest(@RequestBody RequestProductDTO  requestProductDTO){
-       requestService.generateRequest(username, requestProductDTO);
+       Request request = requestService.generateRequest(username, requestProductDTO);
+       if(request == null){
+           return  ResponseEntity.status(HttpStatus.NOT_FOUND).body("Requests Not Found");
+       }
        return ResponseEntity.status(HttpStatus.OK).body(requestProductDTO);
     }
 

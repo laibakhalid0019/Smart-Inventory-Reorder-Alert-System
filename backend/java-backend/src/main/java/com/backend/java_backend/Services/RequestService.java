@@ -33,7 +33,7 @@ public class RequestService {
         return requestRepo.deleteRequestByRequestId(id);
     }
 
-    public void generateRequest(String username, RequestProductDTO requestProductDTO){
+    public Request generateRequest(String username, RequestProductDTO requestProductDTO){
         User user = userRepo.findByUsername(username);
 
         Request request =  new Request();
@@ -41,7 +41,7 @@ public class RequestService {
         request.setDistributor(userRepo.findById(requestProductDTO.getDistributorId()));
         request.setProduct(productRepo.findById(requestProductDTO.getProductId()));
         request.setQuantity(requestProductDTO.getQuantity());
-        requestRepo.save(request);
+        return requestRepo.save(request);
     }
 
     public Boolean deleteRequest(Long id){

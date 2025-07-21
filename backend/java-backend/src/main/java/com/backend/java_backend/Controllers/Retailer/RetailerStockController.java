@@ -2,6 +2,7 @@ package com.backend.java_backend.Controllers.Retailer;
 
 import com.backend.java_backend.Classes.Stock;
 import com.backend.java_backend.Services.StockService;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,5 +59,20 @@ public class RetailerStockController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("NO STOCK");
         }
         return ResponseEntity.status(HttpStatus.OK).body("DELETED");
+    }
+
+    //update stock by order id
+    @PostMapping("/update-stock")
+    public ResponseEntity<?> updateStock(@RequestParam Long orderId) {
+        try {
+            stockService.updateRetailerStockFromOrder(orderId);
+            return ResponseEntity.ok("Retailer stock updated successfully.");
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong.");
+        }
     }
 }
