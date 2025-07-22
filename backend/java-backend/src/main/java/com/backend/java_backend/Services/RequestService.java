@@ -15,9 +15,12 @@ import java.util.Optional;
 @Service
 public class RequestService {
 
+
     @Autowired
     private RequestRepo requestRepo;
+    @Autowired
     private UserRepo userRepo;
+    @Autowired
     private ProductRepo productRepo;
 
     public List<Request> findByStatus(Request.Status status){
@@ -33,7 +36,7 @@ public class RequestService {
         return requestRepo.deleteRequestByRequestId(id);
     }
 
-    public void generateRequest(String username, RequestProductDTO requestProductDTO){
+    public Request generateRequest(String username, RequestProductDTO requestProductDTO){
         User user = userRepo.findByUsername(username);
 
         Request request =  new Request();
@@ -41,7 +44,7 @@ public class RequestService {
         request.setDistributor(userRepo.findById(requestProductDTO.getDistributorId()));
         request.setProduct(productRepo.findById(requestProductDTO.getProductId()));
         request.setQuantity(requestProductDTO.getQuantity());
-        requestRepo.save(request);
+        return requestRepo.save(request);
     }
 
     public Boolean deleteRequest(Long id){
@@ -51,5 +54,10 @@ public class RequestService {
             return true;
         }
         return false;
+    }
+
+    public List<Request> findAllByRetailerIdAndStatus(String username, Request.Status status) {
+        User user = userRepo.findByUsername(username);
+        return requestRepo.findAllByRetailer_IdAndStatus(user.getId(), status);
     }
 }

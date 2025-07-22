@@ -1,6 +1,4 @@
 package com.backend.java_backend.Classes;
-
-
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -28,7 +26,7 @@ public class Payment {
     @Column(unique = true)
     private String transactionId;
 
-    private BigDecimal amount;
+    private float amount;
 
     private String currency = "PKR";
 

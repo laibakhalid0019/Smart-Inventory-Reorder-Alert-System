@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface StockRepo extends JpaRepository<Stock,Integer> {
@@ -14,4 +15,6 @@ public interface StockRepo extends JpaRepository<Stock,Integer> {
     Boolean deleteStockById(Long stockId);
 
     List<Stock> findByProduct_Id(Long productId);
+
+    Optional<Stock> findByRetailerIdAndProductId(Long retailerId, Long productId);
 }

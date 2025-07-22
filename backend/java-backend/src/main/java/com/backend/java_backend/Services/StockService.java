@@ -1,10 +1,17 @@
 package com.backend.java_backend.Services;
 
+import com.backend.java_backend.Classes.Order;
+import com.backend.java_backend.Classes.Product;
 import com.backend.java_backend.Classes.Stock;
+import com.backend.java_backend.Classes.User;
+import com.backend.java_backend.Repos.OrderRepo;
 import com.backend.java_backend.Repos.StockRepo;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.security.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -12,9 +19,12 @@ public class StockService {
 
     @Autowired
     private final StockRepo stockRepo;
+    @Autowired
+    private final OrderRepo orderRepo;
 
-    public StockService(StockRepo stockRepo) {
+    public StockService(StockRepo stockRepo, OrderRepo orderRepo) {
         this.stockRepo = stockRepo;
+        this.orderRepo = orderRepo;
     }
 
     public List<Stock> findAllByRetailer_Id(Long id) {
@@ -41,4 +51,33 @@ public class StockService {
             return stockRepo.save(stock);
         }).orElseThrow(() -> new RuntimeException("Stock not found"));
     }
+
+    public void updateRetailerStockFromOrder(Long orderId) {
+        Order order = orderRepo.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found."));
+
+        if (order.getStatus() != Order.Status.DELIVERED) {
+            throw new IllegalStateException("Order must be marked as DELIVERED before updating stock.");
+        }
+
+        User user = order.getRetailer();
+        Long retailerId = user.getId();
+        Product product = order.getProduct();
+        Long productId = product.getId();
+        int quantityToAdd = order.getQuantity();
+
+        Stock stock = stockRepo.findByRetailerIdAndProductId(retailerId, productId)
+                .orElseGet(() -> {
+                    Stock newStock = new Stock();
+                    newStock.setRetailer(order.getRetailer());
+                    newStock.setProduct(order.getProduct());
+                    newStock.setQuantity(0);
+                    return newStock;
+                });
+
+        stock.setQuantity(stock.getQuantity() + quantityToAdd);
+        stock.setCreatedAt(LocalDateTime.now());
+        stockRepo.save(stock);
+    }
+
 }
