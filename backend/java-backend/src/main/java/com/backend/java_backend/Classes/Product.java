@@ -23,6 +23,7 @@ public class Product {
     private int mst;
     private int quantity;
     private LocalDateTime expiry_date;
+    private String imageUrl;
 
     @ManyToOne
     @JoinColumn(name = "distributor_id")
