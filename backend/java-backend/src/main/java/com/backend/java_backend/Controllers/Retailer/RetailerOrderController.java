@@ -1,56 +1,121 @@
 package com.backend.java_backend.Controllers.Retailer;
 
-
 import com.backend.java_backend.Classes.Order;
 import com.backend.java_backend.DTOs.OrderDTO;
+import com.backend.java_backend.DTOs.PaymentDTO;
+import com.backend.java_backend.Repos.OrderRepo;
 import com.backend.java_backend.Services.OrderService;
+import com.backend.java_backend.Services.PaymentService;
+import com.stripe.exception.StripeException;
+import com.stripe.model.PaymentIntent;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/retailer/order")
 public class RetailerOrderController {
 
+    @Value("${stripe.api.key}")
+    private String stripeApiKey;
+
     @Autowired
     private OrderService orderService;
-    String username =  SecurityContextHolder.getContext().getAuthentication().getName();
-    //get all orders
+
+    @Autowired
+    private PaymentService paymentService;
+
+    @Autowired
+    private OrderRepo orderRepo;
+
+    // Get all orders
     @GetMapping("/view-orders")
     public ResponseEntity<?> viewOrders() {
-        List<Order> orders = orderService.findAllByRetailerId(username);
-        if(orders.isEmpty()){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No orders found");
+        try {
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            List<Order> orders = orderService.findAllByRetailerId(username);
+            if (orders.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No orders found");
+            }
+            return ResponseEntity.ok(orders);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to retrieve orders.");
         }
-        return  ResponseEntity.status(HttpStatus.OK).body(orders);
     }
 
-    //view orders on status
+    // Get orders by status
     @GetMapping("/view-order-status")
     public ResponseEntity<?> viewOrderStatus(@RequestParam Order.Status status) {
-        List<Order> orders = orderService.findAllByStatus(status,username);
-        if(orders.isEmpty()){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No orders found");
-        }
-        return  ResponseEntity.status(HttpStatus.OK).body(orders);
-    }
-
-    @PostMapping("/generate-order-invoice")
-    public ResponseEntity<?> generateOrderInvoice(@RequestBody OrderDTO orderDTO) {
         try {
-            orderService.createOrder(orderDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(orderDTO);
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            List<Order> orders = orderService.findAllByStatus(status, username);
+            if (orders.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No orders found");
+            }
+            return ResponseEntity.ok(orders);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid order status provided.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error while fetching orders by status.");
+        }
+    }
+    // Handle payment
+    @PostMapping("/payment/{id}")
+    public ResponseEntity<?> paymentOrder(@PathVariable Long id, @RequestBody PaymentDTO paymentDTO) {
+        try {
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            PaymentIntent paymentIntent = paymentService.chargeAmount(id, username, paymentDTO.getAmount(), paymentDTO.getCurrency());
+
+            if (paymentIntent == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Payment could not be processed.");
+            }
+            orderRepo.findByOrderId(id).setStatus(Order.Status.PAID);
+            return ResponseEntity.ok(Map.of("client_secret", paymentIntent.getClientSecret()));
+
+        } catch (StripeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Stripe error: " + e.getMessage());
         } catch (EntityNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong while creating the order.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong while processing the payment.");
         }
     }
+    //export orders
+    @GetMapping("/export-orders")
+    public ResponseEntity<?> exportOrdersCSV() {
+        try {
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            List<Order> orders = orderService.findAllByRetailerId(username);
+
+            StringBuilder csvBuilder = new StringBuilder();
+            csvBuilder.append("Order ID,Product,Status,Order Number,Created At\n");
+
+            for (Order order : orders) {
+                csvBuilder.append(order.getOrderId()).append(",")
+                        .append(order.getProduct().getName()).append(",")
+                        .append(order.getStatus()).append(",")
+                        .append(order.getOrderNumber()).append(",")
+                        .append(order.getPaymentTimestamp()).append("\n");
+            }
+
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=order_report.csv")
+                    .header("Content-Type", "text/csv")
+                    .body(csvBuilder.toString().getBytes());
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to export orders.");
+        }
+    }
+
 }

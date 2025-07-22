@@ -1,6 +1,7 @@
 package com.backend.java_backend.Services;
 
 import com.backend.java_backend.Classes.Order;
+import com.backend.java_backend.Classes.Product;
 import com.backend.java_backend.Classes.Request;
 import com.backend.java_backend.Classes.User;
 import com.backend.java_backend.DTOs.OrderDTO;
@@ -37,30 +38,52 @@ public class OrderService {
         return orderRepo.findAllByStatusAndRetailerId(status,user.getId());
     }
 
-    public void createOrder(OrderDTO orderDTO){
-        Request request = requestRepo.findById(orderDTO.getRequestId())
-                .orElseThrow(() -> new EntityNotFoundException("Request not found with ID: " + orderDTO.getRequestId()));
+//    public void createOrder(OrderDTO orderDTO){
+//        Request request = requestRepo.findById(orderDTO.getRequestId())
+//                .orElseThrow(() -> new EntityNotFoundException("Request not found with ID: " + orderDTO.getRequestId()));
+//
+//        if (!request.getStatus().equals(Request.Status.ACCEPTED)) {
+//            throw new IllegalArgumentException("Order cannot be created unless the request is accepted.");
+//        }
+//
+//        // Check if order already exists for this request
+//        if (orderRepo.existsByRequest(request)) {
+//            throw new IllegalArgumentException("Order already exists for this request.");
+//        }
+//
+//        // Build Order entity
+//        Order order = new Order();
+//        order.setRequest(request);
+//        order.setOrderNumber(UUID.randomUUID().toString().substring(0, 10).toUpperCase());
+//        User user = userRepo.findById(order.getRetailer().getId());
+//        if(user == null){
+//            throw new IllegalArgumentException("User not found with ID: " + order.getRetailer().getId());
+//        }
+//        order.setRetailer(user);
+//        Product product = productRepo.findById(order.getProduct().getId());
+//        if(product == null){
+//            throw new IllegalArgumentException("Product not found with ID: " + order.getProduct().getId());
+//        }
+//        order.setProduct(product);
+//        User user1 = userRepo.findById(order.getRetailer().getId());
+//        if(user1 == null){
+//            throw new IllegalArgumentException("User not found with ID: " + order.getRetailer().getId());
+//        }
+//        order.setDistributor(user1);
+//        order.setQuantity(orderDTO.getQuantity());
+//        orderRepo.save(order);
+//    }
 
-        if (!request.getStatus().equals(Request.Status.ACCEPTED)) {
-            throw new IllegalArgumentException("Order cannot be created unless the request is accepted.");
-        }
-
-        // Check if order already exists for this request
-        if (orderRepo.existsByRequest(request)) {
-            throw new IllegalArgumentException("Order already exists for this request.");
-        }
-
-        // Build Order entity
+    public void autoCreateOrderFromRequest(Request request) {
         Order order = new Order();
         order.setRequest(request);
-        order.setOrderNumber(UUID.randomUUID().toString().substring(0, 10).toUpperCase());
-        order.setRetailer(userRepo.findById(orderDTO.getRetailerId())
-                .orElseThrow(() -> new EntityNotFoundException("Retailer not found.")));
-        order.setDistributor(userRepo.findById(orderDTO.getDistributorId())
-                .orElseThrow(() -> new EntityNotFoundException("Distributor not found.")));
-        order.setProduct(productRepo.findById(orderDTO.getProductId())
-                .orElseThrow(() -> new EntityNotFoundException("Product not found.")));
-        order.setQuantity(orderDTO.getQuantity());
+        order.setRetailer(request.getRetailer());
+        order.setDistributor(request.getDistributor());
+        order.setProduct(request.getProduct());
+        order.setQuantity(request.getQuantity());
+        order.setOrderNumber(UUID.randomUUID().toString().substring(0, 8)); // or a smarter format
+        order.setStatus(Order.Status.PENDING);
         orderRepo.save(order);
     }
+
 }

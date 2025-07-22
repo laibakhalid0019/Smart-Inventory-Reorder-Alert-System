@@ -3,7 +3,7 @@ package com.backend.java_backend.Classes;
 import jakarta.persistence.*;
 import lombok.Data;
 
-import java.security.Timestamp;
+import java.sql.Timestamp;
 
 @Entity
 @Table(name = "orders")
@@ -34,7 +34,7 @@ public class Order {
     private Product product;
 
     private Integer quantity;
-
+    @Enumerated(EnumType.STRING)
     private Order.Status status = Order.Status.PENDING;
     public enum Status {
         PENDING,

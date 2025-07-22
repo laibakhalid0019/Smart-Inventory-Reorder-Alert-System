@@ -15,9 +15,12 @@ import java.util.Optional;
 @Service
 public class RequestService {
 
+
     @Autowired
     private RequestRepo requestRepo;
+    @Autowired
     private UserRepo userRepo;
+    @Autowired
     private ProductRepo productRepo;
 
     public List<Request> findByStatus(Request.Status status){
@@ -51,5 +54,10 @@ public class RequestService {
             return true;
         }
         return false;
+    }
+
+    public List<Request> findAllByRetailerIdAndStatus(String username, Request.Status status) {
+        User user = userRepo.findByUsername(username);
+        return requestRepo.findAllByRetailer_IdAndStatus(user.getId(), status);
     }
 }

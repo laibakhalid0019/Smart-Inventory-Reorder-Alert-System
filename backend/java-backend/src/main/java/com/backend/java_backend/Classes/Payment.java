@@ -26,7 +26,7 @@ public class Payment {
     @Column(unique = true)
     private String transactionId;
 
-    private BigDecimal amount;
+    private float amount;
 
     private String currency = "PKR";
 
