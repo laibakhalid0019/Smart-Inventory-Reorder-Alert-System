@@ -14,4 +14,6 @@ public class DistributorProductController {
     public ResponseEntity<?> getInfo(){
         return ResponseEntity.status(HttpStatus.OK).body("DISTRIBUTOR");
     }
+
+    //remember to use CLOUDINARY SERVICE FOR product addition api
 }
