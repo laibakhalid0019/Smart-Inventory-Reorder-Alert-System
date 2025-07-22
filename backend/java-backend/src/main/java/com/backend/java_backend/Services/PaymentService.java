@@ -24,12 +24,11 @@ public class PaymentService {
     private PaymentRepo paymentRepo;
     private UserRepo userRepo;
     private OrderRepo orderRepo;
-    Dotenv dotenv = Dotenv.load();
-    String stripeApiKey = dotenv.get("STRIPE_API_KEY");
-
+    @Value("${stripe.api.key}")
+    String apiKey;
     public PaymentIntent chargeAmount(Long orderId, String username, float amount, String Currency) throws StripeException {
         Payment payment = new Payment();
-        Stripe.apiKey = stripeApiKey;
+        Stripe.apiKey = apiKey;
         PaymentIntentCreateParams params = new PaymentIntentCreateParams.Builder()
                 .setAmount((long) amount)
                 .setCurrency(Currency)
