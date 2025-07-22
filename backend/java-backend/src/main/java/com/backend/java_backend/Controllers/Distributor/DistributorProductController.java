@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/distributor")
-public class DistributorController {
+@RequestMapping("/distributor/product")
+public class DistributorProductController {
     @GetMapping("/get-info")
     public ResponseEntity<?> getInfo(){
         return ResponseEntity.status(HttpStatus.OK).body("DISTRIBUTOR");
