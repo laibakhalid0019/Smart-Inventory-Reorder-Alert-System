@@ -6,8 +6,10 @@ import com.backend.java_backend.DTOs.PaymentDTO;
 import com.backend.java_backend.Repos.OrderRepo;
 import com.backend.java_backend.Services.OrderService;
 import com.backend.java_backend.Services.PaymentService;
+import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
+import io.github.cdimascio.dotenv.Dotenv;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,10 +25,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/retailer/order")
 public class RetailerOrderController {
-
-    @Value("${stripe.api.key}")
-    private String stripeApiKey;
-
+    Dotenv dotenv = Dotenv.load();
+    String stripeApiKeys = dotenv.get("STRIPE_API_KEY");
     @Autowired
     private OrderService orderService;
 
