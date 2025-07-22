@@ -15,10 +15,8 @@ public class Product {
 
     private String name;
     private String category;
-
     @Column(unique = true)
     private String sku;
-
     private String barcode;
     private double retail_price;
     private double cost_price;

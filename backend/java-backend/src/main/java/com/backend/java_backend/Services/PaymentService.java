@@ -7,6 +7,7 @@ import com.backend.java_backend.Repos.OrderRepo;
 import com.backend.java_backend.Repos.PaymentRepo;
 import com.backend.java_backend.Repos.UserRepo;
 import com.stripe.param.PaymentIntentCreateParams;
+import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -24,12 +25,10 @@ public class PaymentService {
     private UserRepo userRepo;
     private OrderRepo orderRepo;
     @Value("${stripe.api.key}")
-    private String stripeApiKey;
-
-
+    String apiKey;
     public PaymentIntent chargeAmount(Long orderId, String username, float amount, String Currency) throws StripeException {
         Payment payment = new Payment();
-        Stripe.apiKey = stripeApiKey;
+        Stripe.apiKey = apiKey;
         PaymentIntentCreateParams params = new PaymentIntentCreateParams.Builder()
                 .setAmount((long) amount)
                 .setCurrency(Currency)

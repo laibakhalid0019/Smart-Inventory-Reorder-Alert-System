@@ -10,22 +10,17 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/retailer/order")
 public class RetailerOrderController {
-
-    @Value("${stripe.api.key}")
-    private String stripeApiKey;
 
     @Autowired
     private OrderService orderService;

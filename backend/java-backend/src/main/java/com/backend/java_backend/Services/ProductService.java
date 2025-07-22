@@ -25,4 +25,8 @@ public class ProductService {
         return productRepo.deleteProductBySku(sku);
     }
 
+    public List<Product> findByCategory(String category){
+        return productRepo.findAllByCategory(category);
+    }
+
 }
