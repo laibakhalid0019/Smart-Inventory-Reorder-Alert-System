@@ -65,58 +65,16 @@ const initialRequests = [
 const Requests = () => {
   const [requests, setRequests] = useState(initialRequests);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: string, status: string) => {
+    // Only allow deletion of Pending or Rejected requests
+    if (status === 'Accepted') {
+      return;
+    }
     setRequests(requests.filter(req => req.id !== id));
   };
 
   const handlePrintPDF = () => {
-    // Prepare document for printing
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    const tableContent = document.querySelector('.requests-table')?.outerHTML || '';
-    const currentDate = new Date().toLocaleDateString();
-    const pendingCount = requests.filter(req => req.status === 'Pending').length;
-    const acceptedCount = requests.filter(req => req.status === 'Accepted').length;
-    const rejectedCount = requests.filter(req => req.status === 'Rejected').length;
-    
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Requests Report - Smart Stock</title>
-          <style>
-            @page { size: A4 landscape; margin: 0.5in; }
-            body { font-family: Arial, sans-serif; font-size: 12px; color: black; }
-            .print-header { text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #dee2e6; }
-            .print-header h1 { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-            .print-header p { font-size: 14px; color: #666; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #dee2e6; padding: 8px; font-size: 11px; text-align: left; }
-            th { background: #e9ecef; font-weight: bold; }
-            .summary { margin-bottom: 20px; padding: 15px; border: 1px solid #dee2e6; background: #f8f9fa; }
-            .badge { display: inline-block; padding: 2px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 10px; background: #f8f9fa; }
-          </style>
-        </head>
-        <body>
-          <div class="print-header">
-            <h1>Smart Stock - Requests Report</h1>
-            <p>Generated on ${currentDate}</p>
-          </div>
-          <div class="summary">
-            <p><strong>Total Requests:</strong> ${requests.length}</p>
-            <p><strong>Pending:</strong> ${pendingCount} | <strong>Accepted:</strong> ${acceptedCount} | <strong>Rejected:</strong> ${rejectedCount}</p>
-          </div>
-          ${tableContent.replace(/class="[^"]*"/g, '').replace(/<button[^>]*>.*?<\/button>/g, '')}
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+    console.log('Generating PDF for requests...');
   };
 
   const getStatusIcon = (status: string) => {
@@ -174,7 +132,7 @@ const Requests = () => {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <Table className="requests-table">
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[100px]">Request ID</TableHead>
@@ -209,8 +167,18 @@ const Requests = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDelete(request.id)}
-                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(request.id, request.status)}
+                            disabled={request.status === 'Accepted'}
+                            className={`${
+                              request.status === 'Accepted' 
+                                ? 'opacity-50 cursor-not-allowed' 
+                                : 'text-destructive hover:text-destructive hover:bg-destructive/10'
+                            }`}
+                            title={
+                              request.status === 'Accepted' 
+                                ? 'Cannot delete accepted requests' 
+                                : 'Delete request'
+                            }
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

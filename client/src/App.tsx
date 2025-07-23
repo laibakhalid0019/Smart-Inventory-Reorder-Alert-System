@@ -11,8 +11,8 @@ import RetailerDashboard from "./pages/Dashboard/RetailerDashboard";
 import DistributorDashboard from "./pages/Dashboard/DistributorDashboard";
 import DeliveryDashboard from "./pages/Dashboard/DeliveryDashboard";
 import StockDisplay from "./pages/Retailer/StockDisplay";
+import RestockProduct from "./pages/Retailer/RestockProduct";
 import SelectDistributor from "./pages/Retailer/SelectDistributor";
-import ProductRequest from "./pages/Retailer/ProductRequest";
 import ViewSales from "./pages/Retailer/ViewSales";
 import Requests from "./pages/Retailer/Requests";
 import Orders from "./pages/Retailer/Orders";
@@ -48,9 +48,9 @@ const App = () => (
           <Route path="/dashboard/distributor" element={<DistributorDashboard />} />
           <Route path="/dashboard/delivery" element={<DeliveryDashboard />} />
            <Route path="/retailer/stock/display" element={<StockDisplay />} />
+           <Route path="/retailer/stock/restock" element={<RestockProduct />} />
            <Route path="/retailer/stock/select-distributor" element={<SelectDistributor />} />
-           <Route path="/retailer/stock/product-request" element={<ProductRequest />} />
-           <Route path="/retailer/stock/sales" element={<ViewSales />} />
+          <Route path="/retailer/stock/sales" element={<ViewSales />} />
           <Route path="/retailer/requests" element={<Requests />} />
           <Route path="/retailer/orders" element={<Orders />} />
           <Route path="/distributor/products" element={<ViewProduct />} />

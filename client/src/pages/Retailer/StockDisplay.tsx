@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, FileText, Filter, Package, Smartphone, Heart, ShirtIcon, Edit2 } from 'lucide-react';
+import { Plus, FileText, Filter, Package, Smartphone, Heart, ShirtIcon, Edit2, Trash2 } from 'lucide-react';
 import RetailerNavigation from '@/components/RetailerNavigation';
 
 // Mock data for demonstration
@@ -104,6 +104,7 @@ const StockDisplay = () => {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [expiredFilter, setExpiredFilter] = useState(false);
   const [lowStockFilter, setLowStockFilter] = useState(false);
+  
 
   // Form state
   const [formData, setFormData] = useState({
@@ -167,55 +168,21 @@ const StockDisplay = () => {
     return quantity <= threshold;
   };
 
-  const handleRequestModal = (product: any) => {
-    // Navigate to product request page
-    navigate(`/retailer/stock/product-request?product=${encodeURIComponent(product.name)}&category=${encodeURIComponent(product.category)}`);
+  const handleRequestRestock = (product: any) => {
+    navigate('/retailer/stock/restock', {
+      state: {
+        product: {
+          name: product.name,
+          category: product.category
+        }
+      }
+    });
   };
 
 
   const handlePrintPDF = () => {
-    // Prepare document for printing
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    const tableContent = document.querySelector('.stock-table')?.outerHTML || '';
-    const currentDate = new Date().toLocaleDateString();
-    
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Stock Display Report - Smart Stock</title>
-          <style>
-            @page { size: A4 landscape; margin: 0.5in; }
-            body { font-family: Arial, sans-serif; font-size: 12px; color: black; }
-            .print-header { text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #dee2e6; }
-            .print-header h1 { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-            .print-header p { font-size: 14px; color: #666; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #dee2e6; padding: 8px; font-size: 11px; text-align: left; }
-            th { background: #e9ecef; font-weight: bold; }
-            .badge { display: inline-block; padding: 2px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 10px; background: #f8f9fa; }
-            .low-stock { background: #ffe6e6; }
-            .expired { background: #ffcccc; }
-          </style>
-        </head>
-        <body>
-          <div class="print-header">
-            <h1>Smart Stock - Inventory Report</h1>
-            <p>Generated on ${currentDate}</p>
-            <p>Total Products: ${filteredStock.length}</p>
-          </div>
-          ${tableContent.replace(/class="[^"]*"/g, '').replace(/<button[^>]*>.*?<\/button>/g, '')}
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+    // PDF generation logic would go here
+    console.log('Generating PDF...');
   };
 
   // Filter products based on current filters
@@ -380,7 +347,7 @@ const StockDisplay = () => {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <Table className="stock-table">
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[100px]">Stock ID</TableHead>
@@ -389,7 +356,7 @@ const StockDisplay = () => {
                       <TableHead className="w-[100px]">Quantity</TableHead>
                       <TableHead className="w-[120px]">Price</TableHead>
                       <TableHead className="w-[120px]">Expiry Date</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                      <TableHead className="w-[120px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -431,22 +398,33 @@ const StockDisplay = () => {
                             </span>
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-2">
+                            <div className="flex gap-1">
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleEdit(item)}
                                 className="text-primary hover:text-primary"
+                                title="Edit Product"
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleRequestModal(item)}
+                                onClick={() => handleRequestRestock(item)}
                                 className="brand-gradient text-white border-0"
+                                title="Request from Distributor"
                               >
                                 <Plus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(item.id)}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                title="Delete Product"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </TableCell>
@@ -460,6 +438,7 @@ const StockDisplay = () => {
           </Card>
         </div>
       </div>
+
     </div>
   );
 };
