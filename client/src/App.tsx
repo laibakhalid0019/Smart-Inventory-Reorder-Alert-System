@@ -1,35 +1,67 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { UserProvider } from "./contexts/UserContext";
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import RetailerDashboard from "./pages/Dashboard/RetailerDashboard";
+import DistributorDashboard from "./pages/Dashboard/DistributorDashboard";
+import DeliveryDashboard from "./pages/Dashboard/DeliveryDashboard";
+import StockDisplay from "./pages/Retailer/StockDisplay";
+import SelectDistributor from "./pages/Retailer/SelectDistributor";
+import ProductRequest from "./pages/Retailer/ProductRequest";
+import ViewSales from "./pages/Retailer/ViewSales";
+import Requests from "./pages/Retailer/Requests";
+import Orders from "./pages/Retailer/Orders";
+import ViewProduct from "./pages/Distributor/ViewProduct";
+import ViewRequest from "./pages/Distributor/ViewRequest";
+import ViewOrder from "./pages/Delivery/ViewOrder";
+import NotFound from "./pages/NotFound";
 
-function App() {
-  const [count, setCount] = useState(0)
+const queryClient = new QueryClient();
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+const BrowsePage = () => (
+  <div className="min-h-screen bg-gradient-to-br from-background via-accent/10 to-primary/10 flex items-center justify-center">
+    <div className="text-center p-8">
+      <h1 className="text-4xl font-bold mb-4">Browse Store - Coming Soon!</h1>
+      <p className="text-xl text-muted-foreground">This feature will be available soon.</p>
+    </div>
+  </div>
+);
 
-export default App
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <UserProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/browse" element={<BrowsePage />} />
+          <Route path="/dashboard/retailer" element={<RetailerDashboard />} />
+          <Route path="/dashboard/distributor" element={<DistributorDashboard />} />
+          <Route path="/dashboard/delivery" element={<DeliveryDashboard />} />
+           <Route path="/retailer/stock/display" element={<StockDisplay />} />
+           <Route path="/retailer/stock/select-distributor" element={<SelectDistributor />} />
+           <Route path="/retailer/stock/product-request" element={<ProductRequest />} />
+           <Route path="/retailer/stock/sales" element={<ViewSales />} />
+          <Route path="/retailer/requests" element={<Requests />} />
+          <Route path="/retailer/orders" element={<Orders />} />
+          <Route path="/distributor/products" element={<ViewProduct />} />
+          <Route path="/distributor/requests" element={<ViewRequest />} />
+          <Route path="/delivery/orders" element={<ViewOrder />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </UserProvider>
+  </QueryClientProvider>
+);
+
+export default App;

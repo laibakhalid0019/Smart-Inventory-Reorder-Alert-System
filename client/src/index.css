@@ -1,68 +1,301 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+/* Smart Stock Design System - Dark and Light Blue Theme
+All colors MUST be HSL.
+*/
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
+@layer base {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    --background: 220 20% 8%;
+    --foreground: 210 25% 95%;
+
+    --card: 220 25% 12%;
+    --card-foreground: 210 25% 95%;
+
+    --popover: 220 25% 12%;
+    --popover-foreground: 210 25% 95%;
+
+    --primary: 211 100% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 100% 20%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 20% 92%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 211 100% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 210 20% 88%;
+    --input: 210 20% 88%;
+    --ring: 220 85% 55%;
+
+    --radius: 0.75rem;
+
+    /* Smart Stock specific colors */
+    --brand-dark-blue: 220 100% 20%;
+    --brand-light-blue: 211 100% 60%;
+    --brand-light: 210 35% 92%;
+    --brand-gradient: linear-gradient(135deg, hsl(211 100% 60%), hsl(220 100% 20%));
+    --brand-gradient-soft: linear-gradient(135deg, hsl(211 100% 60% / 0.1), hsl(220 100% 20% / 0.1));
+    
+    /* Shadows */
+    --shadow-soft: 0 4px 6px -1px hsl(211 100% 60% / 0.1);
+    --shadow-medium: 0 10px 15px -3px hsl(211 100% 60% / 0.15);
+    --shadow-glow: 0 0 40px hsl(211 100% 60% / 0.2);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
-  a:hover {
-    color: #747bff;
+
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 210 25% 95%;
+
+    --card: 220 25% 10%;
+    --card-foreground: 210 25% 95%;
+
+    --popover: 220 25% 10%;
+    --popover-foreground: 210 25% 95%;
+
+    --primary: 211 100% 60%;
+    --primary-foreground: 220 25% 8%;
+
+    --secondary: 220 100% 20%;
+    --secondary-foreground: 210 25% 95%;
+
+    --muted: 220 15% 18%;
+    --muted-foreground: 210 10% 65%;
+
+    --accent: 211 100% 60%;
+    --accent-foreground: 220 25% 8%;
+
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 210 25% 95%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 220 85% 65%;
+
+    /* Dark theme brand colors */
+    --brand-dark-blue: 220 100% 20%;
+    --brand-light-blue: 211 100% 60%;
+    --brand-light: 220 20% 15%;
+    --brand-gradient: linear-gradient(135deg, hsl(211 100% 60%), hsl(220 100% 20%));
+    --brand-gradient-soft: linear-gradient(135deg, hsl(211 100% 60% / 0.15), hsl(220 100% 20% / 0.15));
+    
+    --sidebar-background: 220 25% 8%;
+    --sidebar-foreground: 210 25% 95%;
+    --sidebar-primary: 220 85% 65%;
+    --sidebar-primary-foreground: 220 25% 8%;
+    --sidebar-accent: 220 15% 18%;
+    --sidebar-accent-foreground: 210 25% 95%;
+    --sidebar-border: 220 15% 20%;
+    --sidebar-ring: 220 85% 65%;
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Smart Stock Custom Components */
+  .brand-gradient {
+    background: var(--brand-gradient);
+  }
+  
+  .brand-gradient-soft {
+    background: var(--brand-gradient-soft);
+  }
+  
+  .hero-title {
+    @apply text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent;
+  }
+  
+  .feature-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-medium)] transition-all duration-300 hover:scale-105;
+  }
+  
+  .nav-link {
+    @apply relative inline-flex items-center px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground transition-colors duration-200;
+  }
+  
+  .nav-link::after {
+    @apply content-[''] absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300;
+  }
+  
+  .nav-link:hover::after {
+    @apply w-full;
+  }
+  
+  .floating-animation {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 20px hsl(var(--primary) / 0.3); }
+  100% { box-shadow: 0 0 40px hsl(var(--primary) / 0.6); }
+}
+
+@keyframes slide-up {
+  0% { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Print Styles for PDF Export */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 0.5in;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  /* Hide non-essential elements during print */
+  .print\\:hidden,
+  nav,
+  .no-print,
+  button:not(.print-keep),
+  .bg-gradient-to-br,
+  .feature-card {
+    display: none !important;
+  }
+
+  /* Show print-specific elements */
+  .print\\:block {
+    display: block !important;
+  }
+
+  .print\\:table {
+    display: table !important;
+  }
+
+  /* Table print styles */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto;
+  }
+
+  thead {
+    display: table-header-group !important;
+    background: #f8f9fa !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  th, td {
+    border: 1px solid #dee2e6 !important;
+    padding: 8px !important;
+    font-size: 11px !important;
+    text-align: left;
+  }
+
+  th {
+    background: #e9ecef !important;
+    font-weight: bold !important;
+  }
+
+  /* Card styles for print */
+  .print-card {
+    border: 1px solid #dee2e6 !important;
+    margin-bottom: 20px !important;
+    padding: 15px !important;
+    background: white !important;
+  }
+
+  /* Header styles for print */
+  .print-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #dee2e6;
+  }
+
+  .print-header h1 {
+    font-size: 24px !important;
+    font-weight: bold !important;
+    margin-bottom: 5px !important;
+    color: black !important;
+  }
+
+  .print-header p {
+    font-size: 14px !important;
+    color: #666 !important;
+  }
+
+  /* Badge styles for print */
+  .badge-print {
+    display: inline-block;
+    padding: 2px 6px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 10px;
+    background: #f8f9fa;
+  }
+
+  /* Remove all background colors and shadows */
+  * {
+    background: white !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Ensure text is black */
+  h1, h2, h3, h4, h5, h6, p, span, div, td, th {
+    color: black !important;
   }
 }
