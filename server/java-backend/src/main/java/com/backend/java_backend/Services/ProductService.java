@@ -1,11 +1,13 @@
 package com.backend.java_backend.Services;
-
 import com.backend.java_backend.Classes.Product;
 import com.backend.java_backend.Classes.User;
+import com.backend.java_backend.DTOs.ProductDTO;
 import com.backend.java_backend.Repos.ProductRepo;
+import com.backend.java_backend.Repos.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -13,6 +15,8 @@ import java.util.List;
 public class ProductService {
     @Autowired
     private  ProductRepo productRepo;
+    @Autowired
+    private UserRepo userRepo;
 
     public List<Product> findAll(String username){
         return productRepo.findAllByName(username);
@@ -28,6 +32,25 @@ public class ProductService {
 
     public List<Product> findByCategory(String category){
         return productRepo.findAllByCategory(category);
+    }
+
+    public Product addProduct(ProductDTO productDTO,String username,String url){
+        User distributor = userRepo.findByUsername(username);
+        Product product = new Product();
+        product.setName(productDTO.getName());
+        product.setCategory(productDTO.getCategory());
+        product.setSku(productDTO.getSku());
+        product.setBarcode(productDTO.getBarcode());
+        product.setRetail_price(productDTO.getRetail_price());
+        product.setCost_price(productDTO.getCost_price());
+        product.setMst(productDTO.getMst());
+        product.setQuantity(productDTO.getQuantity());
+        product.setExpiry_date(productDTO.getExpiry_date());
+        product.setImageUrl(url);
+        product.setDistributor(distributor);
+        product.setCreatedAt(LocalDateTime.now());
+
+        return productRepo.save(product);
     }
 
 }

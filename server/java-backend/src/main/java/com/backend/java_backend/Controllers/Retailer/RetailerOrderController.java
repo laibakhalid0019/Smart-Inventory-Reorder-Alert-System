@@ -1,7 +1,6 @@
 package com.backend.java_backend.Controllers.Retailer;
 
 import com.backend.java_backend.Classes.Order;
-import com.backend.java_backend.DTOs.OrderDTO;
 import com.backend.java_backend.DTOs.PaymentDTO;
 import com.backend.java_backend.Repos.OrderRepo;
 import com.backend.java_backend.Services.OrderService;
