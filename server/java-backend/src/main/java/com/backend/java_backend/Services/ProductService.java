@@ -1,6 +1,7 @@
 package com.backend.java_backend.Services;
 
 import com.backend.java_backend.Classes.Product;
+import com.backend.java_backend.Classes.User;
 import com.backend.java_backend.Repos.ProductRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
