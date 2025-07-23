@@ -17,6 +17,9 @@ public class CloudinaryService {
 
     public String uploadFile(MultipartFile file) throws IOException {
         Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+        if(uploadResult.get("status").equals("success")){
         return uploadResult.get("secure_url").toString();
+        }
+        return "error";
     }
 }
