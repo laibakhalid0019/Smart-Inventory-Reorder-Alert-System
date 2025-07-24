@@ -2,6 +2,7 @@ package com.backend.java_backend.Controllers.Distributor;
 
 import com.backend.java_backend.Classes.Request;
 import com.backend.java_backend.Services.RequestService;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -48,5 +49,37 @@ public class DistributorRequestController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Request not found");
         }
         return ResponseEntity.status(HttpStatus.OK).body("Request Deleted successfully");
+    }
+
+    @GetMapping("/export-requests")
+    public ResponseEntity<?> exportRequestsCSV() {
+        try {
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            List<Request> requests = requestService.findAllByDistributor_Id(username);
+
+            return getResponseEntity(requests);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to export requests.");
+        }
+    }
+
+    @NotNull
+    public static ResponseEntity<?> getResponseEntity(List<Request> requests) {
+        StringBuilder csvBuilder = new StringBuilder();
+        csvBuilder.append("Request ID,Product,Distributor,Status,Created At\n");
+
+        for (Request req : requests) {
+            csvBuilder.append(req.getRequestId()).append(",")
+                    .append(req.getProduct().getName()).append(",")
+                    .append(req.getDistributor().getUsername()).append(",")
+                    .append(req.getStatus()).append(",")
+                    .append(req.getCreatedAt()).append("\n");
+        }
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=request_report.csv")
+                .header("Content-Type", "text/csv")
+                .body(csvBuilder.toString().getBytes());
     }
 }

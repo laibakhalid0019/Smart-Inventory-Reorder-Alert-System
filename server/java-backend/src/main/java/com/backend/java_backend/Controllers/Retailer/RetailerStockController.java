@@ -1,5 +1,9 @@
 package com.backend.java_backend.Controllers.Retailer;
+import com.backend.java_backend.Classes.Logs;
 import com.backend.java_backend.Classes.Stock;
+import com.backend.java_backend.Classes.User;
+import com.backend.java_backend.Repos.UserRepo;
+import com.backend.java_backend.Services.LogsService;
 import com.backend.java_backend.Services.StockService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +20,12 @@ public class RetailerStockController {
 
     @Autowired
     private StockService stockService;
+
+    @Autowired
+    private LogsService logsService;
+
+    @Autowired
+    private UserRepo userRepo;
 
     // Get stocks by product ID
     @PostMapping("/get-stock-productId/{id}")
@@ -50,7 +60,15 @@ public class RetailerStockController {
     @PutMapping("/update-stock/{id}")
     public ResponseEntity<?> updateStock(@PathVariable Long id, @RequestBody Stock updatedStock) {
         try {
+            // Get current user for the log entry
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            User currentUser = userRepo.findByUsername(username);
+
             Stock stock = stockService.updateStock(id, updatedStock);
+
+            // Create log entry for the stock update
+            logsService.createLog(stock, currentUser, Logs.MovementLog.UPDATE);
+
             return ResponseEntity.ok(stock);
         } catch (EntityNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
@@ -65,10 +83,24 @@ public class RetailerStockController {
     @DeleteMapping("/delete-stock/{id}")
     public ResponseEntity<?> deleteStock(@PathVariable Long id) {
         try {
+            // Get the stock before deletion for logging
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            User currentUser = userRepo.findByUsername(username);
+
+            // Get stock before deletion for the log
+            Stock stockToDelete = stockService.findById(id);
+            if (stockToDelete == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Stock not found.");
+            }
+
+            // Create log entry before deletion
+            logsService.createLog(stockToDelete, currentUser, Logs.MovementLog.DELETE);
+
             boolean isDeleted = stockService.deleteStockById(id);
             if (!isDeleted) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Stock not found or cannot be deleted.");
             }
+
             return ResponseEntity.ok("Stock deleted successfully.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error while deleting stock.");
