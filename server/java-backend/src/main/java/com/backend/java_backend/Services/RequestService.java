@@ -60,4 +60,24 @@ public class RequestService {
         User user = userRepo.findByUsername(username);
         return requestRepo.findAllByRetailer_IdAndStatus(user.getId(), status);
     }
+
+    public void updateRequestStatus(String status, Long id) {
+        Request request = requestRepo.findByRequestId(id);
+        if (request == null) {
+            throw new IllegalArgumentException("Request with ID " + id + " not found.");
+        }
+        try {
+            Request.Status newStatus = Request.Status.valueOf(status.toUpperCase());
+            request.setStatus(newStatus);
+            requestRepo.save(request);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid status value: " + status);
+        }
+    }
+
+    public List<Request> findAllByDistributor_Id(String username) {
+        User distributor = userRepo.findByUsername(username);
+        return requestRepo.findAllByDistributor_Id(distributor.getId());
+    }
+
 }

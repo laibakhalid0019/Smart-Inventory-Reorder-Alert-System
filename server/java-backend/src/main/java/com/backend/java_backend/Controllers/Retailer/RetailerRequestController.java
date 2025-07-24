@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static com.backend.java_backend.Controllers.Distributor.DistributorRequestController.getResponseEntity;
+
 @RestController
 @RequestMapping("/retailer/request")
 public class RetailerRequestController {
@@ -86,21 +88,7 @@ public class RetailerRequestController {
             String username = SecurityContextHolder.getContext().getAuthentication().getName();
             List<Request> requests = requestService.findAllByRetailerId(username);
 
-            StringBuilder csvBuilder = new StringBuilder();
-            csvBuilder.append("Request ID,Product,Distributor,Status,Created At\n");
-
-            for (Request req : requests) {
-                csvBuilder.append(req.getRequestId()).append(",")
-                        .append(req.getProduct().getName()).append(",")
-                        .append(req.getDistributor().getUsername()).append(",")
-                        .append(req.getStatus()).append(",")
-                        .append(req.getCreatedAt()).append("\n");
-            }
-
-            return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=request_report.csv")
-                    .header("Content-Type", "text/csv")
-                    .body(csvBuilder.toString().getBytes());
+            return getResponseEntity(requests);
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to export requests.");

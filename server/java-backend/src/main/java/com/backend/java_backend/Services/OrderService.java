@@ -74,16 +74,46 @@ public class OrderService {
 //        orderRepo.save(order);
 //    }
 
-    public void autoCreateOrderFromRequest(Request request) {
-        Order order = new Order();
-        order.setRequest(request);
-        order.setRetailer(request.getRetailer());
-        order.setDistributor(request.getDistributor());
-        order.setProduct(request.getProduct());
-        order.setQuantity(request.getQuantity());
-        order.setOrderNumber(UUID.randomUUID().toString().substring(0, 8)); // or a smarter format
-        order.setStatus(Order.Status.PENDING);
-        orderRepo.save(order);
+    public Order autoCreateOrderFromRequest(Long id, String deliveryAgent) {
+        Request request = requestRepo.findByRequestId(id);
+        if (request == null) {
+            throw new IllegalArgumentException("Request cannot be found.");
+        }
+
+        if (deliveryAgent == null || deliveryAgent.isBlank()) {
+            throw new IllegalArgumentException("Delivery agent username is required.");
+        }
+
+        User agent = userRepo.findByUsername(deliveryAgent);
+        if (agent == null) {
+            throw new IllegalArgumentException("Delivery agent not found: " + deliveryAgent);
+        }
+
+        if (request.getRetailer() == null || request.getDistributor() == null || request.getProduct() == null) {
+            throw new IllegalStateException("Request is missing required associations (retailer, distributor, product).");
+        }
+
+        try {
+            Order order = new Order();
+            order.setRequest(request);
+            order.setRetailer(request.getRetailer());
+            order.setDistributor(request.getDistributor());
+            order.setProduct(request.getProduct());
+            order.setQuantity(request.getQuantity());
+            order.setOrderNumber(UUID.randomUUID().toString().substring(0, 8));
+            order.setStatus(Order.Status.PENDING);
+            order.setDeliveryAgent(agent);
+
+           return orderRepo.save(order);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create order from request: " + e.getMessage(), e);
+        }
     }
+
+    public List<Order> findByDistributor(String username){
+        User distributor = userRepo.findByUsername(username);
+        return orderRepo.findAllByDistributor_Id(distributor.getId());
+    }
+
 
 }

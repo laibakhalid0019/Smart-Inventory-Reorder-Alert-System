@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
 
 @RestController
@@ -43,5 +44,53 @@ public class DistributorProductController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("product not created");
         }
         return ResponseEntity.status(HttpStatus.OK).body(product);
+    }
+    @GetMapping("/view-products")
+    public ResponseEntity<?> getProducts(){
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        List<Product> productList = productService.findAll(username);
+        if(productList.isEmpty()){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("product not found");
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(productList);
+    }
+
+    @PostMapping("/delete-product/{id}")
+    public ResponseEntity<?> deleteProduct(@PathVariable Long id){
+        Boolean isDeleted = productService.deleteProductById(id);
+        if(!isDeleted){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("product not found");
+        }
+        return ResponseEntity.status(HttpStatus.OK).body("The product is deleted");
+    }
+
+    @PostMapping("/delete-product/{sku}")
+    public ResponseEntity<?> deleteProduct(@PathVariable String sku){
+        Boolean isDeleted = productService.deleteProductBySku(sku);
+        if(!isDeleted){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("product not found");
+        }
+        return ResponseEntity.status(HttpStatus.OK).body("The product is deleted");
+    }
+
+    @PutMapping("/update-product/{id}")
+    public ResponseEntity<?> updateProduct(@PathVariable Long id, @RequestBody ProductDTO productDTO) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Product updatedProduct = productService.updateProduct(id, productDTO, username);
+
+        if(updatedProduct == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product not found or you don't have permission to update it");
+        }
+
+        return ResponseEntity.status(HttpStatus.OK).body(updatedProduct);
+    }
+
+    @PostMapping("/view-products-by-category")
+    public ResponseEntity<?> viewProductsByCategory(@RequestParam String category){
+        List<Product> productsList = productService.findByCategory(category);
+        if(productsList.isEmpty()){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("product not found");
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(productsList);
     }
 }

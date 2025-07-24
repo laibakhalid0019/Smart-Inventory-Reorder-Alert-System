@@ -53,4 +53,51 @@ public class ProductService {
         return productRepo.save(product);
     }
 
+    public Product updateProduct(Long id, ProductDTO productDTO, String username) {
+        Product existingProduct = productRepo.findById(id);
+
+        // Check if product exists and belongs to the current user
+        if(existingProduct == null || !existingProduct.getDistributor().getUsername().equals(username)) {
+            return null;
+        }
+
+        // Only update fields that are provided (not null)
+        if(productDTO.getName() != null) {
+            existingProduct.setName(productDTO.getName());
+        }
+
+        if(productDTO.getCategory() != null) {
+            existingProduct.setCategory(productDTO.getCategory());
+        }
+
+        if(productDTO.getSku() != null) {
+            existingProduct.setSku(productDTO.getSku());
+        }
+
+        if(productDTO.getBarcode() != null) {
+            existingProduct.setBarcode(productDTO.getBarcode());
+        }
+
+        if(productDTO.getRetail_price() != 0) {
+            existingProduct.setRetail_price(productDTO.getRetail_price());
+        }
+
+        if(productDTO.getCost_price() != 0) {
+            existingProduct.setCost_price(productDTO.getCost_price());
+        }
+
+        if(productDTO.getMst() != 0) {
+            existingProduct.setMst(productDTO.getMst());
+        }
+
+        if(productDTO.getQuantity() != 0) {
+            existingProduct.setQuantity(productDTO.getQuantity());
+        }
+
+        if(productDTO.getExpiry_date() != null) {
+            existingProduct.setExpiry_date(productDTO.getExpiry_date());
+        }
+
+        return productRepo.save(existingProduct);
+    }
 }
