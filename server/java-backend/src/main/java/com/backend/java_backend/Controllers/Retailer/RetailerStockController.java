@@ -18,7 +18,7 @@ public class RetailerStockController {
     private StockService stockService;
 
     // Get stocks by product ID
-    @GetMapping("/get-stock-productId/{id}")
+    @PostMapping("/get-stock-productId/{id}")
     public ResponseEntity<?> getStockProductId(@PathVariable Long id) {
         try {
             List<Stock> stockList = stockService.findByProduct_Id(id);
