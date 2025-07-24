@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Package, Eye, EyeOff, ArrowLeft, Check } from 'lucide-react';
+import { Package, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import axios from "axios";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -41,7 +42,7 @@ const Signup = () => {
 
   const validateForm = () => {
     if (!formData.username || !formData.email || !formData.phone || 
-        !formData.password || !formData.confirmPassword || !formData.address || !formData.role) {
+        !formData.password || !formData.address || !formData.role) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -50,14 +51,7 @@ const Signup = () => {
       return false;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords do not match",
-        variant: "destructive"
-      });
-      return false;
-    }
+
 
     if (formData.password.length < 6) {
       toast({
@@ -83,23 +77,49 @@ const Signup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
+
+    const { username, email, phone, password, address, role } = formData;
+    const formDataToSend = {
+      username,
+      email,
+      phoneNumber: phone,
+      password,
+      address,
+      role
+    };
+
+    if (!validateForm()) {
+      return;
+    }
 
     setIsLoading(true);
-    
-    // Simulate signup process
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Account Created Successfully!",
-        description: "Welcome to Smart Stock! Redirecting to login..."
+
+    try {
+      const response = await axios.post('http://localhost:3000/auth/signup', formDataToSend, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        withCredentials: true
       });
-      
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-    }, 2000);
+
+      setIsLoading(false);
+
+      toast({
+        title: "Success",
+        description: response.data,
+        variant: "default",
+      });
+      navigate('/login');
+    } catch (error) {
+      setIsLoading(false);
+
+      const errorMessage = error.response?.data || "An unexpected error occurred.";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -208,36 +228,6 @@ const Signup = () => {
                     </Button>
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Confirm your password"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      required
-                      className="pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/50"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="address">Address</Label>
                   <Textarea
@@ -258,9 +248,9 @@ const Signup = () => {
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="retailer">Retailer</SelectItem>
-                      <SelectItem value="distributor">Distributor</SelectItem>
-                      <SelectItem value="delivery-agent">Delivery Agent</SelectItem>
+                      <SelectItem value="RETAILER">Retailer</SelectItem>
+                      <SelectItem value="DISTRIBUTOR">Distributor</SelectItem>
+                      <SelectItem value="DELIVERY">Delivery Agent</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
