@@ -74,7 +74,8 @@ public class OrderService {
 //        orderRepo.save(order);
 //    }
 
-    public void autoCreateOrderFromRequest(Request request) {
+    public void autoCreateOrderFromRequest(Request request, String deliveryAgent) {
+        User agent= userRepo.findByUsername(deliveryAgent);
         Order order = new Order();
         order.setRequest(request);
         order.setRetailer(request.getRetailer());
@@ -83,6 +84,7 @@ public class OrderService {
         order.setQuantity(request.getQuantity());
         order.setOrderNumber(UUID.randomUUID().toString().substring(0, 8)); // or a smarter format
         order.setStatus(Order.Status.PENDING);
+        order.setDeliveryAgent(agent);
         orderRepo.save(order);
     }
 
