@@ -16,10 +16,21 @@ public class CloudinaryService {
     private Cloudinary cloudinary;
 
     public String uploadFile(MultipartFile file) throws IOException {
-        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
-        if(uploadResult.get("status").equals("success")){
-        return uploadResult.get("secure_url").toString();
+        try {
+            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+            System.out.println("Cloudinary upload result: " + uploadResult);
+
+            // Check if the secure_url is present in the response
+            if (uploadResult != null && uploadResult.containsKey("secure_url")) {
+                return uploadResult.get("secure_url").toString();
+            } else {
+                System.out.println("Cloudinary upload missing secure_url");
+                return "error";
+            }
+        } catch (Exception e) {
+            System.out.println("Cloudinary upload error: " + e.getMessage());
+            e.printStackTrace();
+            return "error";
         }
-        return "error";
     }
 }

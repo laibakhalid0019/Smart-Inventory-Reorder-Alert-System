@@ -11,7 +11,8 @@ public interface RequestRepo extends JpaRepository<Request,Long> {
     List<Request> findAllByRetailer_Id(Long id);
     Boolean deleteRequestByRequestId(Long id);
     List<Request> findAllByStatus(Request.Status status);
-    Request findByRequestId(Long id);
+    Request findByRequestId(long id);
     List<Request> findAllByDistributor_Id(Long distributorId);
     List<Request> findAllByRetailer_IdAndStatus(Long retailerId, Request.Status status);
+    boolean existsByProduct_Id(Long productId);
 }
