@@ -1,5 +1,6 @@
 package com.backend.java_backend.Services;
 
+import com.backend.java_backend.Classes.Product;
 import com.backend.java_backend.Classes.Request;
 import com.backend.java_backend.Classes.User;
 import com.backend.java_backend.DTOs.RequestProductDTO;
@@ -63,8 +64,11 @@ public class RequestService {
 
     public void updateRequestStatus(String status, Long id) {
         Request request = requestRepo.findByRequestId(id);
-        if (request == null) {
-            throw new IllegalArgumentException("Request with ID " + id + " not found.");
+        //find product quantity
+        Product product = productRepo.findById(request.getProduct().getId());
+        //match quantity of distributor
+        if(product.getQuantity() < request.getQuantity()){
+            throw new IllegalArgumentException("Product quantity less than request quantity");
         }
         try {
             Request.Status newStatus = Request.Status.valueOf(status.toUpperCase());

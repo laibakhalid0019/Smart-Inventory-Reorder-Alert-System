@@ -15,4 +15,6 @@ public interface OrderRepo extends JpaRepository<Order,Long> {
     List<Order> findAllByStatusAndRetailerId(Order.Status status, Long retailer_id);
     boolean existsByRequest(Request request);
     Order findByOrderId(Long id);
+
+    List<Order> findAllByDeliveryAgent_Id(Long id);
 }
