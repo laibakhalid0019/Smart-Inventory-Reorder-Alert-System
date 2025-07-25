@@ -13,6 +13,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,41 +39,10 @@ public class OrderService {
         return orderRepo.findAllByStatusAndRetailerId(status,user.getId());
     }
 
-//    public void createOrder(OrderDTO orderDTO){
-//        Request request = requestRepo.findById(orderDTO.getRequestId())
-//                .orElseThrow(() -> new EntityNotFoundException("Request not found with ID: " + orderDTO.getRequestId()));
-//
-//        if (!request.getStatus().equals(Request.Status.ACCEPTED)) {
-//            throw new IllegalArgumentException("Order cannot be created unless the request is accepted.");
-//        }
-//
-//        // Check if order already exists for this request
-//        if (orderRepo.existsByRequest(request)) {
-//            throw new IllegalArgumentException("Order already exists for this request.");
-//        }
-//
-//        // Build Order entity
-//        Order order = new Order();
-//        order.setRequest(request);
-//        order.setOrderNumber(UUID.randomUUID().toString().substring(0, 10).toUpperCase());
-//        User user = userRepo.findById(order.getRetailer().getId());
-//        if(user == null){
-//            throw new IllegalArgumentException("User not found with ID: " + order.getRetailer().getId());
-//        }
-//        order.setRetailer(user);
-//        Product product = productRepo.findById(order.getProduct().getId());
-//        if(product == null){
-//            throw new IllegalArgumentException("Product not found with ID: " + order.getProduct().getId());
-//        }
-//        order.setProduct(product);
-//        User user1 = userRepo.findById(order.getRetailer().getId());
-//        if(user1 == null){
-//            throw new IllegalArgumentException("User not found with ID: " + order.getRetailer().getId());
-//        }
-//        order.setDistributor(user1);
-//        order.setQuantity(orderDTO.getQuantity());
-//        orderRepo.save(order);
-//    }
+    public List<Order> findAllByDeliveryAgent(String username){
+        User user = userRepo.findByUsername(username);
+        return orderRepo.findAllByDeliveryAgent_Id(user.getId());
+    }
 
     public Order autoCreateOrderFromRequest(Long id, String deliveryAgent) {
         Request request = requestRepo.findByRequestId(id);
@@ -113,6 +83,44 @@ public class OrderService {
     public List<Order> findByDistributor(String username){
         User distributor = userRepo.findByUsername(username);
         return orderRepo.findAllByDistributor_Id(distributor.getId());
+    }
+
+    public String updateOrderStatus(Long orderId, String status, String username) {
+        Order order = orderRepo.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
+
+        User currentUser = userRepo.findByUsername(username);
+
+        if (order.getDeliveryAgent() == null || !order.getDeliveryAgent().getId().equals(currentUser.getId())) {
+            throw new SecurityException("You are not assigned to this order.");
+        }
+
+        Order.Status newStatus;
+        try {
+            newStatus = Order.Status.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid status value: " + status);
+        }
+
+        if (order.getStatus() == Order.Status.DELIVERED) {
+            throw new IllegalStateException("Order already delivered. Status cannot be changed.");
+        }
+
+        if (order.getStatus() == newStatus) {
+            throw new IllegalStateException("Order already in " + newStatus + " status.");
+        }
+
+        // Set timestamps if needed
+        if (newStatus == Order.Status.DISPATCHED) {
+            order.setDispatchedAt(new Timestamp(System.currentTimeMillis()));
+        } else if (newStatus == Order.Status.DELIVERED) {
+            order.setDeliveredAt(new Timestamp(System.currentTimeMillis()));
+        }
+
+        order.setStatus(newStatus);
+        orderRepo.save(order);
+
+        return "Order status updated to " + newStatus;
     }
 
 
