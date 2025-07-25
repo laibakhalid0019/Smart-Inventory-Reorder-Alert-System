@@ -98,6 +98,12 @@
 			<artifactId>gson</artifactId>
 		</dependency>
 
+		<!-- Jackson JSR310 module for Java 8 date/time support -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
+		</dependency>
+
 		<!-- Apache HttpClient (for Gemini API call) -->
 		<dependency>
 			<groupId>org.apache.httpcomponents.client5</groupId>
@@ -109,6 +115,7 @@
 			<artifactId>cloudinary-http44</artifactId>
 			<version>1.36.0</version>
 		</dependency>
+
 
 
 	</dependencies>

@@ -13,7 +13,7 @@ public class Request {
 
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long requestId;
+    private long requestId;
 
     @ManyToOne
     @JoinColumn(name = "retailer_id")

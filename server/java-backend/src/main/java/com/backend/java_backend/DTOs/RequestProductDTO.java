@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class RequestProductDTO {
-    private Long distributorId;
-    private Long productId;
+    private long distributorId;
+    private long productId;
     private Integer quantity;
 }

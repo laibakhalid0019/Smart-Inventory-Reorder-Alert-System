@@ -35,12 +35,13 @@ public class RequestService {
     }
 
     public Boolean deleteByRequestId(Long id){
-        return requestRepo.deleteRequestByRequestId(id);
+        // Return true if at least one record was deleted
+        return requestRepo.deleteRequestByRequestId(id) > 0;
     }
 
     public Request generateRequest(String username, RequestProductDTO requestProductDTO){
         User user = userRepo.findByUsername(username);
-
+        Product product = productRepo.findById(requestProductDTO.getProductId());
         Request request =  new Request();
         request.setRetailer(user);
         request.setDistributor(userRepo.findById(requestProductDTO.getDistributorId()));
@@ -49,11 +50,11 @@ public class RequestService {
         return requestRepo.save(request);
     }
 
-    public Boolean deleteRequest(Long id){
+    public Boolean deleteRequest(long id){
         Request request = requestRepo.findByRequestId(id);
         if(request.getStatus() == Request.Status.PENDING || request.getStatus() == Request.Status.REJECTED){
-            requestRepo.deleteRequestByRequestId(id);
-            return true;
+            // Return true if at least one record was deleted
+            return requestRepo.deleteRequestByRequestId(id) > 0;
         }
         return false;
     }
@@ -63,7 +64,7 @@ public class RequestService {
         return requestRepo.findAllByRetailer_IdAndStatus(user.getId(), status);
     }
 
-    public void updateRequestStatus(String status, Long id) {
+    public void updateRequestStatus(String status, long id) {
         Request request = requestRepo.findByRequestId(id);
         //find product quantity
         Product product = productRepo.findById(request.getProduct().getId());
