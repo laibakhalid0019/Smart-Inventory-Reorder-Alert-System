@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +29,8 @@ public class OrderService {
     private RequestRepo requestRepo;
     @Autowired
     private ProductRepo productRepo;
+    @Autowired
+    private StockService stockService;
 
     public List<Order> findAllByRetailerId(String username){
         User user = userRepo.findByUsername(username);
@@ -71,7 +74,6 @@ public class OrderService {
             order.setProduct(request.getProduct());
             order.setQuantity(request.getQuantity());
             order.setOrderNumber(UUID.randomUUID().toString().substring(0, 8));
-            order.setStatus(Order.Status.PENDING);
             order.setDeliveryAgent(agent);
 
            return orderRepo.save(order);
@@ -109,18 +111,18 @@ public class OrderService {
         if (order.getStatus() == newStatus) {
             throw new IllegalStateException("Order already in " + newStatus + " status.");
         }
-
         // Set timestamps if needed
         if (newStatus == Order.Status.DISPATCHED) {
             order.setDispatchedAt(new Timestamp(System.currentTimeMillis()));
         } else if (newStatus == Order.Status.DELIVERED) {
-            order.setDeliveredAt(new Timestamp(System.currentTimeMillis()));
+            // Use a simpler timestamp format without timezone information
+            order.setDeliveredAt(Timestamp.from(Instant.now()));
+            order.setStatus(newStatus);
         }
-
-        order.setStatus(newStatus);
         orderRepo.save(order);
+        stockService.updateRetailerStockFromOrder(orderId);
 
-        return "Order status updated to " + newStatus;
+        return "Order Statuss updated to " + newStatus;
     }
 
 
