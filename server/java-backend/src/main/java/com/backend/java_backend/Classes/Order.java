@@ -34,8 +34,10 @@ public class Order {
     private Product product;
 
     private Integer quantity;
+
+    @Column(name = "order_status")
     @Enumerated(EnumType.STRING)
-    private Order.Status status = Order.Status.PENDING;
+    private Status status = Status.PENDING;
     public enum Status {
         PENDING,
         PAID,

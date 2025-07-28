@@ -86,6 +86,7 @@ public class StockService {
 
         stock.setQuantity(stock.getQuantity() + quantityToAdd);
         stock.setCreatedAt(LocalDateTime.now());
+        stock.setExpiry_date(product.getExpiry_date());
         Stock savedStock = stockRepo.save(stock);
 
         // Log the appropriate action

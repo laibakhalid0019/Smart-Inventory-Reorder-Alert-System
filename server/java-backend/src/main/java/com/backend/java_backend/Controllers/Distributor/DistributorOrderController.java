@@ -1,9 +1,10 @@
 package com.backend.java_backend.Controllers.Distributor;
 
 import com.backend.java_backend.Classes.Order;
-import com.backend.java_backend.Classes.Request;
+import com.backend.java_backend.Classes.User;
+import com.backend.java_backend.DTOs.DeliveryAgentDTO;
+import com.backend.java_backend.Services.CustomUserDetailsService;
 import com.backend.java_backend.Services.OrderService;
-import com.backend.java_backend.Services.RequestService;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,9 +21,26 @@ public class DistributorOrderController {
     @Autowired
     private OrderService orderService;
 
+    @Autowired
+    private CustomUserDetailsService userDetailsService;
+
+    @GetMapping("/get-distributors")
+    public ResponseEntity<?> getDistributors(){
+        List<User> distributorsList = userDetailsService.getAllDistributors();
+
+        if(distributorsList.isEmpty()){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No distributors found");
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(distributorsList);
+    }
+
     @PostMapping("/generate-order/{id}")
-    public ResponseEntity<?> generateOrder(@RequestBody String deliveryAgent, @PathVariable Long id) {
-        Order order = orderService.autoCreateOrderFromRequest(id, deliveryAgent);
+    public ResponseEntity<?> generateOrder(@RequestBody DeliveryAgentDTO deliveryAgentDTO, @PathVariable Long id) {
+        if (deliveryAgentDTO == null || deliveryAgentDTO.getDeliveryAgent() == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Delivery agent is required");
+        }
+
+        Order order = orderService.autoCreateOrderFromRequest(id, deliveryAgentDTO.getDeliveryAgent());
         if(order == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Order not generated");
         }
