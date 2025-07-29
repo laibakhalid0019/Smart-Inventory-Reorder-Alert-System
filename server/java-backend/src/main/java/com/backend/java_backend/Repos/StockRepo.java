@@ -17,4 +17,6 @@ public interface StockRepo extends JpaRepository<Stock,Integer> {
     List<Stock> findByProduct_Id(Long productId);
 
     Optional<Stock> findByRetailerIdAndProductId(Long retailerId, Long productId);
+
+    Stock findById(Long id);
 }
