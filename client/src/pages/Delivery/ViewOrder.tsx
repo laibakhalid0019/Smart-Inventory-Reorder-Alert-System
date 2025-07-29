@@ -26,8 +26,9 @@ const initialOrders = [
     quantity: 5,
     orderDate: '2024-01-15',
     status: 'ready_for_pickup',
-    priority: 'high',
-    estimatedDelivery: '2024-01-17'
+    estimatedDelivery: '2024-01-17',
+    dispatchedAt: null,
+    deliveredAt: null
   },
   {
     id: 'ORD002',
@@ -39,8 +40,9 @@ const initialOrders = [
     quantity: 50,
     orderDate: '2024-01-14',
     status: 'picked',
-    priority: 'medium',
-    estimatedDelivery: '2024-01-16'
+    estimatedDelivery: '2024-01-16',
+    dispatchedAt: null,
+    deliveredAt: null
   },
   {
     id: 'ORD003',
@@ -52,8 +54,9 @@ const initialOrders = [
     quantity: 100,
     orderDate: '2024-01-13',
     status: 'dispatched',
-    priority: 'high',
-    estimatedDelivery: '2024-01-15'
+    estimatedDelivery: '2024-01-15',
+    dispatchedAt: '2024-01-14T10:30:00',
+    deliveredAt: null
   },
   {
     id: 'ORD004',
@@ -65,8 +68,9 @@ const initialOrders = [
     quantity: 25,
     orderDate: '2024-01-12',
     status: 'delivered',
-    priority: 'low',
-    estimatedDelivery: '2024-01-14'
+    estimatedDelivery: '2024-01-14',
+    dispatchedAt: '2024-01-13T09:15:00',
+    deliveredAt: '2024-01-14T14:22:00'
   },
   {
     id: 'ORD005',
@@ -78,8 +82,9 @@ const initialOrders = [
     quantity: 10,
     orderDate: '2024-01-11',
     status: 'ready_for_pickup',
-    priority: 'medium',
-    estimatedDelivery: '2024-01-16'
+    estimatedDelivery: '2024-01-16',
+    dispatchedAt: null,
+    deliveredAt: null
   },
   {
     id: 'ORD006',
@@ -91,8 +96,9 @@ const initialOrders = [
     quantity: 20,
     orderDate: '2024-01-10',
     status: 'picked',
-    priority: 'low',
-    estimatedDelivery: '2024-01-15'
+    estimatedDelivery: '2024-01-15',
+    dispatchedAt: null,
+    deliveredAt: null
   }
 ];
 
@@ -101,9 +107,16 @@ const ViewOrder = () => {
   const { toast } = useToast();
 
   const handleStatusUpdate = (orderId: string, newStatus: string) => {
+    const currentTime = new Date().toISOString();
+    
     setOrders(orders.map(order => 
       order.id === orderId 
-        ? { ...order, status: newStatus }
+        ? { 
+            ...order, 
+            status: newStatus,
+            dispatchedAt: newStatus === 'dispatched' ? currentTime : order.dispatchedAt,
+            deliveredAt: newStatus === 'delivered' ? currentTime : order.deliveredAt
+          }
         : order
     ));
     
@@ -178,13 +191,17 @@ const ViewOrder = () => {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
-    }
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   const formatStatus = (status: string) => {
@@ -280,9 +297,9 @@ const ViewOrder = () => {
                       <TableHead>Distributor</TableHead>
                       <TableHead>Product</TableHead>
                       <TableHead className="w-[60px]">Qty</TableHead>
-                      <TableHead className="w-[100px]">Priority</TableHead>
                       <TableHead className="w-[120px]">Status</TableHead>
-                      <TableHead className="w-[110px]">Est. Delivery</TableHead>
+                      <TableHead className="w-[140px]">Dispatch At</TableHead>
+                      <TableHead className="w-[140px]">Delivered At</TableHead>
                       <TableHead className="w-[200px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -303,16 +320,20 @@ const ViewOrder = () => {
                         <TableCell>{order.productName}</TableCell>
                         <TableCell>{order.quantity}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={getPriorityColor(order.priority)}>
-                            {order.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
                           <Badge variant="outline" className={getStatusColor(order.status)}>
                             {formatStatus(order.status)}
                           </Badge>
                         </TableCell>
-                        <TableCell>{order.estimatedDelivery}</TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {formatDateTime(order.dispatchedAt)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {formatDateTime(order.deliveredAt)}
+                          </span>
+                        </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {order.status === 'ready_for_pickup' && (

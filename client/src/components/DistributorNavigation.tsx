@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Package, FileText, User, LogOut, Mail, UserCircle, Menu, BarChart3 } from 'lucide-react';
+import { Package, FileText, User, LogOut, Mail, UserCircle, Menu, BarChart3, ShoppingCart } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 
@@ -52,6 +52,11 @@ const DistributorNavigation = () => {
             <Link to="/distributor/requests" className="nav-link">
               <FileText className="h-4 w-4 mr-2" />
               View Request
+            </Link>
+
+            <Link to="/distributor/orders" className="nav-link">
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              View Orders
             </Link>
 
             {/* Profile Dropdown */}
@@ -173,6 +178,15 @@ const DistributorNavigation = () => {
                     >
                       <FileText className="h-4 w-4 mr-3" />
                       View Request
+                    </Link>
+
+                    <Link 
+                      to="/distributor/orders" 
+                      className="flex items-center py-3 px-4 rounded-lg hover:bg-accent/20 transition-colors text-lg font-medium"
+                      onClick={() => setIsMobileOpen(false)}
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-3" />
+                      Orders
                     </Link>
                   </div>
                 </div>

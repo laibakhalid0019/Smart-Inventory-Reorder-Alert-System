@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -10,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, CheckCircle, XCircle, Clock, CreditCard, Truck } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Clock, CreditCard, Truck, Users } from 'lucide-react';
 import DistributorNavigation from '@/components/DistributorNavigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -90,8 +91,18 @@ const initialRequests = [
   }
 ];
 
+// Mock delivery agents
+const deliveryAgents = [
+  { id: 'DA001', name: 'John Smith', email: 'john@delivery.com' },
+  { id: 'DA002', name: 'Sarah Johnson', email: 'sarah@delivery.com' },
+  { id: 'DA003', name: 'Mike Wilson', email: 'mike@delivery.com' },
+  { id: 'DA004', name: 'Lisa Brown', email: 'lisa@delivery.com' },
+];
+
 const ViewRequest = () => {
   const [requests, setRequests] = useState(initialRequests);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const { toast } = useToast();
 
   const handleApprove = (requestId: string) => {
@@ -119,23 +130,23 @@ const ViewRequest = () => {
     });
   };
 
-  const handleMarkPaid = (requestId: string) => {
-    setRequests(requests.map(req => 
-      req.id === requestId 
-        ? { ...req, paymentStatus: 'paid' }
-        : req
-    ));
-    toast({
-      title: "Payment Confirmed",
-      description: "Payment has been marked as received. Product ready for dispatch.",
-    });
+
+  const handleGenerateOrder = (request) => {
+    setSelectedRequest(request);
+    setShowDeliveryModal(true);
   };
 
-  const handleSendToDelivery = (requestId: string) => {
-    // In a real app, this would create an order for the delivery agent
+  const handleSelectDeliveryAgent = (agent) => {
+    setRequests(requests.map(req => 
+      req.id === selectedRequest.id 
+        ? { ...req, status: 'dispatched', assignedAgent: agent }
+        : req
+    ));
+    setShowDeliveryModal(false);
+    setSelectedRequest(null);
     toast({
-      title: "Sent to Delivery",
-      description: "Order has been sent to delivery agent for dispatch.",
+      title: "Order Dispatched",
+      description: `Order dispatched to Delivery Agent ${agent.name}`,
     });
   };
 
@@ -352,24 +363,14 @@ const ViewRequest = () => {
                                 </Button>
                               </>
                             )}
-                            {request.status === 'approved' && request.paymentStatus === 'pending' && (
+                            {request.status === 'approved' && (
                               <Button
                                 size="sm"
-                                onClick={() => handleMarkPaid(request.id)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
-                              >
-                                <CreditCard className="h-3 w-3 mr-1" />
-                                Mark Paid
-                              </Button>
-                            )}
-                            {request.status === 'approved' && request.paymentStatus === 'paid' && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleSendToDelivery(request.id)}
-                                className="bg-purple-600 hover:bg-purple-700 text-white"
+                                onClick={() => handleGenerateOrder(request)}
+                                className="bg-purple-600 hover:bg-purple-700 text-white transition-all hover:scale-105"
                               >
                                 <Truck className="h-3 w-3 mr-1" />
-                                Send to Delivery
+                                Generate Order
                               </Button>
                             )}
                           </div>
@@ -383,6 +384,41 @@ const ViewRequest = () => {
           </Card>
         </div>
       </div>
+
+      {/* Delivery Agent Selection Modal */}
+      <Dialog open={showDeliveryModal} onOpenChange={setShowDeliveryModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Select Delivery Agent</DialogTitle>
+            <DialogDescription>
+              Choose a delivery agent to dispatch the order to.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {deliveryAgents.map((agent) => (
+              <Card 
+                key={agent.id} 
+                className="cursor-pointer transition-all hover:shadow-lg hover:scale-105 border-2 hover:border-primary/50"
+                onClick={() => handleSelectDeliveryAgent(agent)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold">{agent.name}</h4>
+                      <p className="text-sm text-muted-foreground">{agent.email}</p>
+                      <p className="text-xs text-muted-foreground">ID: {agent.id}</p>
+                    </div>
+                    <Button size="sm" variant="outline">
+                      <Users className="h-4 w-4 mr-2" />
+                      Select
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

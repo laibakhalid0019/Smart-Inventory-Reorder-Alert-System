@@ -18,6 +18,7 @@ import Requests from "./pages/Retailer/Requests";
 import Orders from "./pages/Retailer/Orders";
 import ViewProduct from "./pages/Distributor/ViewProduct";
 import ViewRequest from "./pages/Distributor/ViewRequest";
+import DistributorViewOrder from "./pages/Distributor/ViewOrder";
 import ViewOrder from "./pages/Delivery/ViewOrder";
 import NotFound from "./pages/NotFound";
 
@@ -55,6 +56,7 @@ const App = () => (
           <Route path="/retailer/orders" element={<Orders />} />
           <Route path="/distributor/products" element={<ViewProduct />} />
           <Route path="/distributor/requests" element={<ViewRequest />} />
+          <Route path="/distributor/orders" element={<DistributorViewOrder />} />
           <Route path="/delivery/orders" element={<ViewOrder />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
