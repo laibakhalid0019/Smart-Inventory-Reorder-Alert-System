@@ -77,7 +77,11 @@ public class StockService {
 
         stock.setQuantity(stock.getQuantity() + quantityToAdd);
         stock.setCreatedAt(LocalDateTime.now());
+        stock.setMin_threshold(product.getMst());
         stockRepo.save(stock);
     }
 
+    public Stock findById(Long id) {
+        return stockRepo.findById(id);
+    }
 }

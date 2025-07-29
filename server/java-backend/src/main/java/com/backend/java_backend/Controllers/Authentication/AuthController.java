@@ -14,13 +14,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @Autowired
     private UserRepo userRepository;
@@ -31,9 +37,18 @@ public class AuthController {
     @Autowired
     private JwtUtils jwtUtils;
 
-    @PostMapping(value = "/signup")
+    //http://localhost:3000/auth/signup
+    @GetMapping("/test")
+    public ResponseEntity<?> testCors() {
+        return ResponseEntity.ok("CORS working!");
+    }
+
+    @PostMapping("/signup")
     public ResponseEntity<String> signup( @RequestBody SignupRequest signupRequest) {
+        logger.info("Received signup request: {}", signupRequest);
+
         if (userRepository.existsByUsername(signupRequest.getUsername())) {
+            logger.warn("Username already in use: {}", signupRequest.getUsername());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Username is already in use");
         }
 
@@ -42,11 +57,13 @@ public class AuthController {
         user.setPass(passwordEncoder.encode(signupRequest.getPassword()));
         user.setEmail(signupRequest.getEmail());
         user.setRole(signupRequest.getRole());
+        System.out.println(signupRequest.getRole());
         user.setAddress(signupRequest.getAddress());
         user.setPhone(signupRequest.getPhoneNumber());
 
         userRepository.save(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully" + user);
+        logger.info("User registered successfully: {}", user);
+        return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully");
     }
 
     @PostMapping(value = "/login", produces = "application/json")

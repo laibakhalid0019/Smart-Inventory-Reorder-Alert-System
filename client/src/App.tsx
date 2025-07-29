@@ -21,6 +21,7 @@ import ViewRequest from "./pages/Distributor/ViewRequest";
 import DistributorViewOrder from "./pages/Distributor/ViewOrder";
 import ViewOrder from "./pages/Delivery/ViewOrder";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -41,25 +42,74 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/browse" element={<BrowsePage />} />
-          <Route path="/dashboard/retailer" element={<RetailerDashboard />} />
-          <Route path="/dashboard/distributor" element={<DistributorDashboard />} />
-          <Route path="/dashboard/delivery" element={<DeliveryDashboard />} />
-           <Route path="/retailer/stock/display" element={<StockDisplay />} />
-           <Route path="/retailer/stock/restock" element={<RestockProduct />} />
-           <Route path="/retailer/stock/select-distributor" element={<SelectDistributor />} />
-          <Route path="/retailer/stock/sales" element={<ViewSales />} />
-          <Route path="/retailer/requests" element={<Requests />} />
-          <Route path="/retailer/orders" element={<Orders />} />
-          <Route path="/distributor/products" element={<ViewProduct />} />
-          <Route path="/distributor/requests" element={<ViewRequest />} />
-          <Route path="/distributor/orders" element={<DistributorViewOrder />} />
-          <Route path="/delivery/orders" element={<ViewOrder />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/browse" element={<BrowsePage />} />
+            <Route
+              path="/dashboard/retailer"
+              element={
+                <ProtectedRoute allowedRole="RETAILER">
+                  <RetailerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/dashboard/distributor" element={<DistributorDashboard />} />
+            <Route path="/dashboard/delivery" element={<DeliveryDashboard />} />
+            <Route
+              path="/retailer/stock/display"
+              element={
+                <ProtectedRoute allowedRole="RETAILER">
+                  <StockDisplay />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/retailer/stock/restock"
+              element={
+                <ProtectedRoute allowedRole="RETAILER">
+                  <RestockProduct />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/retailer/stock/select-distributor"
+              element={
+                <ProtectedRoute allowedRole="RETAILER">
+                  <SelectDistributor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/retailer/stock/sales"
+              element={
+                <ProtectedRoute allowedRole="RETAILER">
+                  <ViewSales />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/retailer/requests"
+              element={
+                <ProtectedRoute allowedRole="RETAILER">
+                  <Requests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/retailer/orders"
+              element={
+                <ProtectedRoute allowedRole="RETAILER">
+                  <Orders />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/distributor/products" element={<ViewProduct />} />
+            <Route path="/distributor/requests" element={<ViewRequest />} />
+            <Route path="/delivery/orders" element={<ViewOrder />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </UserProvider>

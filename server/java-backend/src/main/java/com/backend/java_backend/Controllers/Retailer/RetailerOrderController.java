@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+import static com.backend.java_backend.Controllers.Distributor.DistributorOrderController.getResponseEntity;
+
 @RestController
 @RequestMapping("/retailer/order")
 public class RetailerOrderController {
@@ -81,7 +83,7 @@ public class RetailerOrderController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong while processing the payment.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong while processing the stripe payment.");
         }
     }
     //export orders
@@ -91,21 +93,7 @@ public class RetailerOrderController {
             String username = SecurityContextHolder.getContext().getAuthentication().getName();
             List<Order> orders = orderService.findAllByRetailerId(username);
 
-            StringBuilder csvBuilder = new StringBuilder();
-            csvBuilder.append("Order ID,Product,Status,Order Number,Created At\n");
-
-            for (Order order : orders) {
-                csvBuilder.append(order.getOrderId()).append(",")
-                        .append(order.getProduct().getName()).append(",")
-                        .append(order.getStatus()).append(",")
-                        .append(order.getOrderNumber()).append(",")
-                        .append(order.getPaymentTimestamp()).append("\n");
-            }
-
-            return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=order_report.csv")
-                    .header("Content-Type", "text/csv")
-                    .body(csvBuilder.toString().getBytes());
+            return getResponseEntity(orders);
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to export orders.");
