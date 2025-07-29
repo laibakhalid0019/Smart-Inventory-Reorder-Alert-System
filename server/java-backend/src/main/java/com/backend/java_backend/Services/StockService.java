@@ -1,6 +1,5 @@
 package com.backend.java_backend.Services;
 
-import com.backend.java_backend.Classes.Logs;
 import com.backend.java_backend.Classes.Order;
 import com.backend.java_backend.Classes.Product;
 import com.backend.java_backend.Classes.Stock;
@@ -20,12 +19,8 @@ public class StockService {
 
     @Autowired
     private final StockRepo stockRepo;
-
     @Autowired
     private final OrderRepo orderRepo;
-
-    @Autowired
-    private LogsService logsService;
 
     public StockService(StockRepo stockRepo, OrderRepo orderRepo) {
         this.stockRepo = stockRepo;
@@ -71,7 +66,6 @@ public class StockService {
         Long productId = product.getId();
         int quantityToAdd = order.getQuantity();
 
-        boolean isNewStock = false;
         Stock stock = stockRepo.findByRetailerIdAndProductId(retailerId, productId)
                 .orElseGet(() -> {
                     Stock newStock = new Stock();
@@ -81,23 +75,13 @@ public class StockService {
                     return newStock;
                 });
 
-        // Determine if this is a new stock entry or an update
-        isNewStock = stock.getId() == null;
-
         stock.setQuantity(stock.getQuantity() + quantityToAdd);
         stock.setCreatedAt(LocalDateTime.now());
-        stock.setExpiry_date(product.getExpiry_date());
-        Stock savedStock = stockRepo.save(stock);
-
-        // Log the appropriate action
-        if (isNewStock) {
-            logsService.createLog(savedStock, user, Logs.MovementLog.ADD);
-        } else {
-            logsService.createLog(savedStock, user, Logs.MovementLog.UPDATE);
-        }
+        stock.setMin_threshold(product.getMst());
+        stockRepo.save(stock);
     }
 
     public Stock findById(Long id) {
-        return stockRepo.findById(Math.toIntExact(id)).orElse(null);
+        return stockRepo.findById(id);
     }
 }
