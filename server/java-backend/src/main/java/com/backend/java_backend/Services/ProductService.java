@@ -1,6 +1,7 @@
 package com.backend.java_backend.Services;
 import com.backend.java_backend.Classes.Product;
 import com.backend.java_backend.Classes.User;
+import com.backend.java_backend.DTOs.Category;
 import com.backend.java_backend.DTOs.ProductDTO;
 import com.backend.java_backend.Repos.ProductRepo;
 import com.backend.java_backend.Repos.RequestRepo;
@@ -79,8 +80,8 @@ public class ProductService {
         return result;
     }
 
-    public List<Product> findByCategory(String category) {
-        return productRepo.findAllByCategory(category);
+    public List<Product> findByCategory(Category category) {
+        return productRepo.findAllByCategory(category.getCategory());
     }
 
     public Product addProduct(ProductDTO productDTO, String username, String url) {
