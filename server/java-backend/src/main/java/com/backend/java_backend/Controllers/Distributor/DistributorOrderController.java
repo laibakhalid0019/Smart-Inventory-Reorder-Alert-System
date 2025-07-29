@@ -24,15 +24,7 @@ public class DistributorOrderController {
     @Autowired
     private CustomUserDetailsService userDetailsService;
 
-    @GetMapping("/get-distributors")
-    public ResponseEntity<?> getDistributors(){
-        List<User> distributorsList = userDetailsService.getAllDistributors();
 
-        if(distributorsList.isEmpty()){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No distributors found");
-        }
-        return ResponseEntity.status(HttpStatus.OK).body(distributorsList);
-    }
 
     @PostMapping("/generate-order/{id}")
     public ResponseEntity<?> generateOrder(@RequestBody DeliveryAgentDTO deliveryAgentDTO, @PathVariable Long id) {

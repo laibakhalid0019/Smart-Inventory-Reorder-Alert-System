@@ -12,17 +12,20 @@ public class Logs {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
-    @JoinColumn(name = "product_id", referencedColumnName = "id")
+    @ManyToOne
+    @JoinColumn(name = "product_id", unique = false)
     private Product product;
 
-    @OneToOne
-    @JoinColumn(name = "stock_id", referencedColumnName = "id")
+    @ManyToOne
+    @JoinColumn(name = "stock_id", nullable = true)
     private Stock stock;
 
-    @OneToOne
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @ManyToOne
+    @JoinColumn(name = "user_id", unique = false)
     private User user;
+
+    // Add quantity to store this information even if stock is deleted
+    private Integer quantity;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "log_info")

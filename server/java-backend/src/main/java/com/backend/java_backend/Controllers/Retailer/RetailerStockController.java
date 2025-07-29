@@ -2,7 +2,9 @@ package com.backend.java_backend.Controllers.Retailer;
 import com.backend.java_backend.Classes.Logs;
 import com.backend.java_backend.Classes.Stock;
 import com.backend.java_backend.Classes.User;
+import com.backend.java_backend.DTOs.StockDTO;
 import com.backend.java_backend.Repos.UserRepo;
+import com.backend.java_backend.Services.CustomUserDetailsService;
 import com.backend.java_backend.Services.LogsService;
 import com.backend.java_backend.Services.StockService;
 import jakarta.persistence.EntityNotFoundException;
@@ -26,6 +28,9 @@ public class RetailerStockController {
 
     @Autowired
     private UserRepo userRepo;
+
+    @Autowired
+    private CustomUserDetailsService userDetailsService;
 
     // Get stocks by product ID
     @PostMapping("/get-stock-productId/{id}")
@@ -58,32 +63,23 @@ public class RetailerStockController {
 
     // Update stock by stock ID
     @PutMapping("/update-stock/{id}")
-    public ResponseEntity<?> updateStock(@PathVariable Long id, @RequestBody Stock updatedStock) {
-        try {
-            // Get current user for the log entry
+    public ResponseEntity<?> updateStock(@PathVariable Long id, @RequestBody StockDTO stockDTO) {
+
             String username = SecurityContextHolder.getContext().getAuthentication().getName();
             User currentUser = userRepo.findByUsername(username);
 
-            Stock stock = stockService.updateStock(id, updatedStock);
+            Stock stock = stockService.updateStock(id, stockDTO);
 
             // Create log entry for the stock update
             logsService.createLog(stock, currentUser, Logs.MovementLog.UPDATE);
 
             return ResponseEntity.ok(stock);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error while updating stock.");
-        }
     }
 
     // Delete stock by stock ID
     @DeleteMapping("/delete-stock/{id}")
     public ResponseEntity<?> deleteStock(@PathVariable Long id) {
         try {
-            // Get the stock before deletion for logging
             String username = SecurityContextHolder.getContext().getAuthentication().getName();
             User currentUser = userRepo.findByUsername(username);
 
@@ -93,17 +89,24 @@ public class RetailerStockController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Stock not found.");
             }
 
-            // Create log entry before deletion
-            logsService.createLog(stockToDelete, currentUser, Logs.MovementLog.DELETE);
+            // Create a custom log without directly referencing the stock object
+            Logs log = new Logs();
+            log.setProduct(stockToDelete.getProduct());
+            log.setUser(currentUser);
+            log.setMovementLog(Logs.MovementLog.DELETE);
+            log.setQuantity(stockToDelete.getQuantity());
+            logsService.saveLog(log);
 
-            boolean isDeleted = stockService.deleteStockById(id);
+            // Delete the stock with special handling for log references
+            boolean isDeleted = stockService.deleteStockAndUpdateLogs(id);
             if (!isDeleted) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Stock not found or cannot be deleted.");
             }
 
             return ResponseEntity.ok("Stock deleted successfully.");
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error while deleting stock.");
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error while deleting stock: " + e.getMessage());
         }
     }
 
@@ -147,6 +150,26 @@ public class RetailerStockController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to export stock data.");
         }
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepo.findByUsername(username);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        return ResponseEntity.ok(user);
+    }
+
+    @GetMapping("/get-distributors")
+    public ResponseEntity<?> getDistributors(){
+        List<User> distributorsList = userDetailsService.getAllDistributors();
+
+        if(distributorsList.isEmpty()){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No distributors found");
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(distributorsList);
     }
 
 }
