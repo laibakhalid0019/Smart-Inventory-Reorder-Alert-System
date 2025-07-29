@@ -18,6 +18,7 @@ import Requests from "./pages/Retailer/Requests";
 import Orders from "./pages/Retailer/Orders";
 import ViewProduct from "./pages/Distributor/ViewProduct";
 import ViewRequest from "./pages/Distributor/ViewRequest";
+import DistributorViewOrder from "./pages/Distributor/ViewOrder";
 import ViewOrder from "./pages/Delivery/ViewOrder";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -41,6 +42,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
