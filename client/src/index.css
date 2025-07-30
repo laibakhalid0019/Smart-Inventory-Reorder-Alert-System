@@ -151,7 +151,12 @@ All colors MUST be HSL.
   .feature-card {
     @apply bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-medium)] transition-all duration-300 hover:scale-105;
   }
-  
+
+  /* Override scaling animation for specific cards */
+  .no-scale {
+    @apply hover:scale-100;
+  }
+
   .nav-link {
     @apply relative inline-flex items-center px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground transition-colors duration-200;
   }

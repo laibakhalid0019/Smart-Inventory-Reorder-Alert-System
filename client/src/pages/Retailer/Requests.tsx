@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import RetailerNavigation from '@/components/RetailerNavigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,79 +12,91 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Trash2, Clock, CheckCircle, XCircle } from 'lucide-react';
-
-// Mock data for requests
-const initialRequests = [
-  {
-    id: 'REQ001',
-    distributorId: 'DIST001',
-    distributorName: 'TechMart Distributors',
-    product: 'iPhone 15 Pro',
-    quantity: 10,
-    createdAt: '2024-01-15',
-    status: 'Pending'
-  },
-  {
-    id: 'REQ002',
-    distributorId: 'DIST003',
-    distributorName: 'Fashion Wholesale',
-    product: 'Cotton T-Shirt',
-    quantity: 25,
-    createdAt: '2024-01-14',
-    status: 'Accepted'
-  },
-  {
-    id: 'REQ003',
-    distributorId: 'DIST005',
-    distributorName: 'MedSupply Inc.',
-    product: 'Paracetamol 500mg',
-    quantity: 50,
-    createdAt: '2024-01-13',
-    status: 'Rejected'
-  },
-  {
-    id: 'REQ004',
-    distributorId: 'DIST002',
-    distributorName: 'Digital Supply Co.',
-    product: 'Samsung Galaxy S24',
-    quantity: 15,
-    createdAt: '2024-01-12',
-    status: 'Pending'
-  },
-  {
-    id: 'REQ005',
-    distributorId: 'DIST004',
-    distributorName: 'Style Supply Chain',
-    product: 'Denim Jeans',
-    quantity: 20,
-    createdAt: '2024-01-11',
-    status: 'Accepted'
-  }
-];
+import { FileText, Trash2, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { RootState } from '@/Redux/Store';
+import { fetchRequests, deleteRequest } from '@/Redux/Store/requestsSlice';
+import type { AppDispatch } from '@/Redux/Store';
 
 const Requests = () => {
-  const [requests, setRequests] = useState(initialRequests);
+  const dispatch = useDispatch<AppDispatch>();
+  const { items: requests, loading, error } = useSelector((state: RootState) => state.requests);
+  const { toast } = useToast();
 
-  const handleDelete = (id: string, status: string) => {
-    // Only allow deletion of Pending or Rejected requests
-    if (status === 'Accepted') {
-      return;
+  // Fetch requests data using Redux
+  useEffect(() => {
+    dispatch(fetchRequests());
+  }, [dispatch]);
+
+  const handleDelete = async (id: number) => {
+    try {
+      // Use the Redux action to delete a request
+      const resultAction = await dispatch(deleteRequest(id));
+
+      if (deleteRequest.fulfilled.match(resultAction)) {
+        toast({
+          title: 'Success',
+          description: 'Request deleted successfully',
+        });
+      } else if (deleteRequest.rejected.match(resultAction) && resultAction.payload) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: resultAction.payload as string,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete request.',
+      });
+      console.error('Error deleting request:', error);
     }
-    setRequests(requests.filter(req => req.id !== id));
   };
 
   const handlePrintPDF = () => {
-    console.log('Generating PDF for requests...');
+    // Convert requests to CSV content
+    const headers = ['Request ID', 'Distributor', 'Product', 'Quantity', 'Price', 'Created At', 'Status'];
+    const csvContent = [
+      headers.join(','),
+      ...requests.map(request => [
+        request.requestId,
+        request.distributor.username,
+        request.product.name,
+        request.quantity,
+        request.price,
+        new Date(request.createdAt).toLocaleDateString(),
+        request.status
+      ].join(','))
+    ].join('\n');
+
+    // Create a Blob containing the CSV data
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+    // Create a download link and trigger it
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `requests_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: 'Export successful',
+      description: 'Your requests have been exported as CSV.',
+    });
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Pending':
+    switch (status.toUpperCase()) {
+      case 'PENDING':
         return <Clock className="h-4 w-4" />;
-      case 'Accepted':
+      case 'ACCEPTED':
         return <CheckCircle className="h-4 w-4" />;
-      case 'Rejected':
+      case 'REJECTED':
         return <XCircle className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
@@ -91,16 +104,25 @@ const Requests = () => {
   };
 
   const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'Pending':
+    switch (status.toUpperCase()) {
+      case 'PENDING':
         return 'default';
-      case 'Accepted':
+      case 'ACCEPTED':
         return 'secondary';
-      case 'Rejected':
+      case 'REJECTED':
         return 'destructive';
       default:
         return 'default';
     }
+  };
+
+  // Format date from ISO string
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
   return (
@@ -121,9 +143,14 @@ const Requests = () => {
                   <FileText className="h-5 w-5 text-primary" />
                   Request History
                 </span>
-                <Button onClick={handlePrintPDF} variant="outline" className="flex items-center gap-2">
+                <Button
+                  onClick={handlePrintPDF}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={requests.length === 0 || loading}
+                >
                   <FileText className="h-4 w-4" />
-                  Print as PDF
+                  Export as CSV
                 </Button>
               </CardTitle>
               <CardDescription>
@@ -131,71 +158,79 @@ const Requests = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[100px]">Request ID</TableHead>
-                      <TableHead className="w-[120px]">Distributor ID</TableHead>
-                      <TableHead>Distributor Name</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead className="w-[100px]">Quantity</TableHead>
-                      <TableHead className="w-[120px]">Created At</TableHead>
-                      <TableHead className="w-[120px]">Status</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {requests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell className="font-medium">{request.id}</TableCell>
-                        <TableCell className="font-medium">{request.distributorId}</TableCell>
-                        <TableCell>{request.distributorName}</TableCell>
-                        <TableCell>{request.product}</TableCell>
-                        <TableCell>{request.quantity}</TableCell>
-                        <TableCell>{request.createdAt}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={getStatusVariant(request.status)}
-                            className="flex items-center gap-1"
-                          >
-                            {getStatusIcon(request.status)}
-                            {request.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(request.id, request.status)}
-                            disabled={request.status === 'Accepted'}
-                            className={`${
-                              request.status === 'Accepted' 
-                                ? 'opacity-50 cursor-not-allowed' 
-                                : 'text-destructive hover:text-destructive hover:bg-destructive/10'
-                            }`}
-                            title={
-                              request.status === 'Accepted' 
-                                ? 'Cannot delete accepted requests' 
-                                : 'Delete request'
-                            }
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
+              {loading ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2">Loading requests...</span>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8 text-destructive">
+                  <p>{error}</p>
+                  <Button onClick={() => dispatch(fetchRequests())} className="mt-4">
+                    Try Again
+                  </Button>
+                </div>
+              ) : requests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No requests found.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[100px]">Request ID</TableHead>
+                        <TableHead>Distributor</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="w-[100px]">Quantity</TableHead>
+                        <TableHead className="w-[100px]">Price</TableHead>
+                        <TableHead className="w-[120px]">Created At</TableHead>
+                        <TableHead className="w-[120px]">Status</TableHead>
+                        <TableHead className="w-[80px]">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              
-              {requests.length === 0 && (
-                <div className="text-center py-12">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Requests Found</h3>
-                  <p className="text-muted-foreground">
-                    You haven't made any requests yet. Start by browsing products in the Stock Display.
-                  </p>
+                    </TableHeader>
+                    <TableBody>
+                      {requests.map((request) => (
+                        <TableRow key={request.requestId}>
+                          <TableCell className="font-medium">{request.requestId}</TableCell>
+                          <TableCell>{request.distributor.username}</TableCell>
+                          <TableCell>{request.product.name}</TableCell>
+                          <TableCell>{request.quantity}</TableCell>
+                          <TableCell>${request.price?.toFixed(2)}</TableCell>
+                          <TableCell>{formatDate(request.createdAt)}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={getStatusVariant(request.status) as any}
+                              className="flex items-center gap-1"
+                            >
+                              {getStatusIcon(request.status)}
+                              {request.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(request.requestId)}
+                              disabled={request.status.toUpperCase() === 'ACCEPTED'}
+                              className={`${
+                                request.status.toUpperCase() === 'ACCEPTED' 
+                                  ? 'opacity-50 cursor-not-allowed' 
+                                  : 'text-destructive hover:text-destructive hover:bg-destructive/10'
+                              }`}
+                              title={
+                                request.status.toUpperCase() === 'ACCEPTED'
+                                  ? 'Cannot delete accepted requests'
+                                  : 'Delete request'
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </CardContent>

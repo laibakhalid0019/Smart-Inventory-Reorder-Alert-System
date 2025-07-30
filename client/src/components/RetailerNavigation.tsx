@@ -67,13 +67,6 @@ const RetailerNavigation = () => {
                       >
                         Display Stock
                       </Link>
-                      <Link 
-                        to="/retailer/stock/sales" 
-                        className="block px-3 py-2 text-sm hover:bg-accent rounded-md"
-                      >
-                        <BarChart3 className="h-4 w-4 mr-2 inline" />
-                        View Sales
-                      </Link>
                     </div>
                   </NavigationMenuContent>
                 </NavigationMenuItem>

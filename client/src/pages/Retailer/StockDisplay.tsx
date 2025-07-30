@@ -1,121 +1,120 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import axios from 'axios';
+
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Plus, FileText, Filter, Package, Smartphone, Heart, ShirtIcon, Edit2, Trash2 } from 'lucide-react';
+
+import {
+  Plus, FileText, Filter, Package, Smartphone, Heart, ShirtIcon, Edit2, Trash2, Loader2
+} from 'lucide-react';
 import RetailerNavigation from '@/components/RetailerNavigation';
+import { useToast } from '@/hooks/use-toast';
+import { RootState, AppDispatch } from '@/Redux/Store';
+import {
+  fetchRetailerStock,
+  fetchStockByCategory,
+  updateStockItem,
+  setSelectedCategory,
+  updateCategories,
+  filterStock
+} from '@/Redux/Store/stockSlice';
 
-// Mock data for demonstration
-const initialStock = [
-  {
-    id: 'STK001',
-    name: 'iPhone 15 Pro',
-    category: 'Electronics',
-    quantity: 3,
-    minThreshold: 5,
-    expiryDate: '2024-12-31',
-    price: 999,
-    description: 'Latest iPhone with advanced camera system',
-    imageUrl: 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=400'
-  },
-  {
-    id: 'STK002',
-    name: 'Samsung Galaxy S24',
-    category: 'Electronics',
-    quantity: 8,
-    minThreshold: 6,
-    expiryDate: '2025-06-15',
-    price: 899,
-    description: 'Premium Android smartphone with excellent display',
-    imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400'
-  },
-  {
-    id: 'STK003',
-    name: 'MacBook Air M3',
-    category: 'Electronics',
-    quantity: 2,
-    minThreshold: 3,
-    expiryDate: '2024-07-21',
-    price: 1299,
-    description: 'Lightweight laptop with powerful M3 chip',
-    imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400'
-  },
-  {
-    id: 'STK004',
-    name: 'Cotton T-Shirt',
-    category: 'Clothes',
-    quantity: 1,
-    minThreshold: 3,
-    expiryDate: '2025-01-15',
-    price: 25,
-    description: 'Comfortable cotton t-shirt available in multiple colors',
-    imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'
-  },
-  {
-    id: 'STK005',
-    name: 'Paracetamol 500mg',
-    category: 'Medicine',
-    quantity: 0,
-    minThreshold: 10,
-    expiryDate: '2024-06-30',
-    price: 8,
-    description: 'Pain relief medication, 24 tablets per pack',
-    imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400'
-  },
-  {
-    id: 'STK006',
-    name: 'Denim Jeans',
-    category: 'Clothes',
-    quantity: 15,
-    minThreshold: 5,
-    expiryDate: '2025-12-31',
-    price: 65,
-    description: 'Classic blue denim jeans in various sizes',
-    imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400'
-  }
-];
+interface Product {
+  id: number;
+  name: string;
+  category: string;
+  retail_price: number;
+  imageUrl: string;
+  description?: string;
+}
 
+interface StockItem {
+  id: number;
+  quantity: number;
+  expiry_date: string;
+  min_threshold: number;
+  product: Product;
+}
+
+interface FormData {
+  name: string;
+  description: string;
+  price: string;
+  quantity: string;
+  imageUrl: string;
+  category: string;
+  minThreshold: number;
+  expiryDate: string;
+}
 
 const StockDisplay = () => {
   const navigate = useNavigate();
-  const [stock, setStock] = useState(initialStock);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
-  
-  // Filter states
+  const dispatch = useDispatch<AppDispatch>();
+
+  // Get stock data from Redux store
+  const { items: stock, loading, error, categories, selectedCategory } = useSelector(
+    (state: RootState) => state.stock
+  );
+
+  const [editingProduct, setEditingProduct] = useState<StockItem | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [quantityError, setQuantityError] = useState<string | null>(null);
+  const [originalQuantity, setOriginalQuantity] = useState<number>(0);
+  const { toast } = useToast();
+
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [expiredFilter, setExpiredFilter] = useState(false);
   const [lowStockFilter, setLowStockFilter] = useState(false);
-  
 
-  // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
     price: '',
     quantity: '',
     imageUrl: '',
     category: 'Electronics',
-    minThreshold: 5
+    minThreshold: 5,
+    expiryDate: '',
   });
+
+  // Fetch retailer's stock data when component mounts
+  useEffect(() => {
+    dispatch(fetchRetailerStock())
+      .unwrap()
+      .then((stockData) => {
+        // Extract unique categories from stock data
+        const uniqueCategories = [...new Set(stockData.map((item: any) => item.product.category))];
+        dispatch(updateCategories(uniqueCategories));
+      })
+      .catch((error) => {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to fetch stock data: ' + error
+        });
+      });
+  }, [dispatch, toast]);
+
+  const handleCategoryChange = (category: string) => {
+    setCategoryFilter(category);
+    dispatch(filterStock({
+      category,
+      showExpired: expiredFilter,
+      showLowStock: lowStockFilter
+    }));
+  };
 
   const resetForm = () => {
     setFormData({
@@ -125,72 +124,207 @@ const StockDisplay = () => {
       quantity: '',
       imageUrl: '',
       category: 'Electronics',
-      minThreshold: 5
+      minThreshold: 5,
+      expiryDate: '',
     });
     setEditingProduct(null);
   };
 
-  const handleEdit = (product: any) => {
-    setEditingProduct(product);
+  const handleEdit = (item: StockItem) => {
+    const product = item.product;
+    setEditingProduct(item);
+    setOriginalQuantity(item.quantity);
     setFormData({
       name: product.name,
-      description: product.description,
-      price: product.price.toString(),
-      quantity: product.quantity.toString(),
-      imageUrl: product.imageUrl,
+      description: product.description || '',
+      price: product.retail_price.toString(),
+      quantity: item.quantity.toString(),
+      imageUrl: product.imageUrl || '',
       category: product.category,
-      minThreshold: product.minThreshold
+      minThreshold: item.min_threshold,
+      expiryDate: item.expiry_date?.slice(0, 10) || '',
     });
+    setQuantityError(null); // Reset any previous error
   };
 
-  const handleSave = () => {
-    if (editingProduct) {
-      setStock(stock.map(item => 
-        item.id === editingProduct.id 
-          ? { ...item, ...formData, price: parseFloat(formData.price), quantity: parseInt(formData.quantity) }
-          : item
-      ));
+  const validateQuantity = (newValue: string): boolean => {
+    const newQuantity = parseInt(newValue);
+    if (isNaN(newQuantity)) {
+      setQuantityError("Quantity must be a valid number");
+      return false;
     }
-    resetForm();
+
+    if (newQuantity > originalQuantity) {
+      setQuantityError(`Quantity cannot be increased. Original: ${originalQuantity}`);
+      return false;
+    }
+
+    if (newQuantity < 0) {
+      setQuantityError("Quantity cannot be negative");
+      return false;
+    }
+
+    setQuantityError(null);
+    return true;
   };
 
-  const handleDelete = (id: string) => {
-    setStock(stock.filter(item => item.id !== id));
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    validateQuantity(newValue);
+    setFormData({ ...formData, quantity: newValue });
   };
 
-  const isExpired = (date: string) => {
-    const today = new Date();
-    const expiryDate = new Date(date);
-    return expiryDate <= today;
+  const handleSave = async () => {
+    if (editingProduct) {
+      // Validate quantity before saving
+      if (!validateQuantity(formData.quantity)) {
+        return;
+      }
+
+      try {
+        setIsUpdating(true); // Start loading state
+        const updatedStock = {
+          quantity: parseInt(formData.quantity),
+          min_threshold: formData.minThreshold,
+          name: formData.name,
+          category: formData.category,
+        };
+
+        // Dispatch the update action to Redux store
+        const resultAction = await dispatch(updateStockItem({
+          id: editingProduct.id,
+          updatedData: updatedStock
+        }));
+
+        if (updateStockItem.fulfilled.match(resultAction)) {
+          toast({
+            title: "Stock Updated",
+            description: "Stock item has been updated successfully.",
+          });
+          resetForm();
+        } else if (updateStockItem.rejected.match(resultAction)) {
+          toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: resultAction.payload as string || 'Failed to update stock item'
+          });
+        }
+      } catch (error) {
+        console.error("Error updating stock:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'An error occurred while updating the stock.'
+        });
+      } finally {
+        setIsUpdating(false); // End loading state
+      }
+    }
   };
 
-  const isLowStock = (quantity: number, threshold: number) => {
-    return quantity <= threshold;
+  const handleDelete = async (id: number) => {
+    try {
+      console.log("Deleting stock with ID:", id);
+      await axios.delete(`http://localhost:3000/retailer/stocks/delete-stock/${id}`, {
+        withCredentials: true
+      });
+
+      // After successful deletion, refresh the stock data
+      dispatch(fetchRetailerStock());
+
+      toast({
+        title: "Stock Deleted",
+        description: "Stock item has been deleted successfully.",
+      });
+    } catch (error) {
+      console.error("Error deleting stock:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'An error occurred while deleting the stock item.'
+      });
+    }
   };
 
-  const handleRequestRestock = (product: any) => {
+  const isExpired = (date: string) => new Date(date) <= new Date();
+  const isLowStock = (qty: number, threshold: number) => qty <= threshold;
+
+  const handleRequestRestock = (product: StockItem) => {
+    console.log("Requesting restock for:", product.product.name);
     navigate('/retailer/stock/restock', {
       state: {
         product: {
-          name: product.name,
-          category: product.category
+          name: product.product.name || '',
+          category: product.product.category || 'Books'
         }
       }
     });
   };
 
-
-  const handlePrintPDF = () => {
-    // PDF generation logic would go here
-    console.log('Generating PDF...');
+  // New function for navigating to restock page from empty state
+  const handleAddNewStock = () => {
+    console.log("Adding new stock - navigating to restock page with default values");
+    navigate('/retailer/stock/restock', {
+      state: {
+        product: {
+          name: 'New Product',
+          category: 'Books'
+        }
+      }
+    });
   };
 
-  // Filter products based on current filters
-  const filteredStock = stock.filter(product => {
-    const categoryMatch = categoryFilter === 'All' || product.category === categoryFilter;
-    const expiredMatch = !expiredFilter || isExpired(product.expiryDate);
-    const lowStockMatch = !lowStockFilter || isLowStock(product.quantity, product.minThreshold);
-    
+  const handlePrintPDF = () => {
+    console.log('Generating CSV file...');
+
+    // Create CSV header row
+    let csvContent = 'ID,Category,Name,Quantity,Min Threshold,Price,Expiry Date\n';
+
+    // Add each stock item as a row
+    filteredStock.forEach(item => {
+      const product = item.product;
+      const expiryDate = item.expiry_date?.slice(0, 10) || 'N/A';
+      const row = [
+        item.id,
+        product.category,
+        `"${product.name.replace(/"/g, '""')}"`, // Handle names with commas by wrapping in quotes and escaping quotes
+        item.quantity,
+        item.min_threshold,
+        product.retail_price,
+        expiryDate
+      ].join(',');
+
+      csvContent += row + '\n';
+    });
+
+    // Create a Blob with the CSV content
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+    // Create a temporary URL for the Blob
+    const url = window.URL.createObjectURL(blob);
+
+    // Create a download link and trigger the download
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+    link.href = url;
+    link.setAttribute('download', `stock-inventory-${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "CSV Generated",
+      description: "The stock inventory CSV file has been generated successfully.",
+      variant: "default",
+    });
+
+  };
+
+  const filteredStock = stock.filter(item => {
+    const categoryMatch = categoryFilter === 'All' || item.product.category === categoryFilter;
+    const expiredMatch = !expiredFilter || isExpired(item.expiry_date);
+    const lowStockMatch = !lowStockFilter || isLowStock(item.quantity, item.min_threshold);
     return categoryMatch && expiredMatch && lowStockMatch;
   });
 
@@ -204,233 +338,154 @@ const StockDisplay = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent/10 to-primary/10">
-      <RetailerNavigation />
-      
-      <div className="pt-8 pb-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
+      <div className="min-h-screen bg-gradient-to-br from-background via-accent/10 to-primary/10">
+        <RetailerNavigation />
+
+        <div className="pt-8 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Stock Display</h1>
-            <p className="text-muted-foreground">Manage your inventory and request products from distributors</p>
+            <h1 className="text-3xl font-bold mb-2">Stock Display</h1>
+            <p className="text-muted-foreground">Manage your inventory and request products</p>
           </div>
 
-          {/* Filters and Actions */}
-          <Card className="feature-card mb-8">
+          <Card className="feature-card mb-8 no-scale">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Filter className="h-5 w-5 text-primary" />
-                  Filters & Actions
-                </span>
+              <CardTitle className="flex justify-between items-center">
+                <span className="flex items-center gap-2"><Filter className="h-5 w-5" /> Filters & Actions</span>
                 <Button onClick={handlePrintPDF} variant="outline" className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Print as PDF
+                  Print CSV
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <Label>Filter by Category</Label>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Categories</SelectItem>
-                      <SelectItem value="Electronics">Electronics</SelectItem>
-                      <SelectItem value="Clothes">Clothes</SelectItem>
-                      <SelectItem value="Medicine">Medicine</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end">
-                  <Button 
-                    variant={expiredFilter ? "default" : "outline"} 
-                    onClick={() => setExpiredFilter(!expiredFilter)}
-                    className="w-full"
-                  >
-                    Expired Items
-                  </Button>
-                </div>
-                <div className="flex items-end">
-                  <Button 
-                    variant={lowStockFilter ? "default" : "outline"} 
-                    onClick={() => setLowStockFilter(!lowStockFilter)}
-                    className="w-full"
-                  >
-                    Low Stock
-                  </Button>
-                </div>
+            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <Label>Filter by Category</Label>
+                <Select value={categoryFilter} onValueChange={handleCategoryChange}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All</SelectItem>
+                    {categories.map(category => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+              <Button variant={expiredFilter ? "default" : "outline"} onClick={() => setExpiredFilter(!expiredFilter)}>Expired</Button>
+              <Button variant={lowStockFilter ? "default" : "outline"} onClick={() => setLowStockFilter(!lowStockFilter)}>Low Stock</Button>
             </CardContent>
           </Card>
 
-          {/* Edit Product Section */}
+          {/* Edit Form */}
           {editingProduct && (
-            <Card className="feature-card mb-8">
-              <CardHeader>
-                <CardTitle>Edit Product</CardTitle>
-                <CardDescription>Update the product information</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="name">Title</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Enter product name"
-                    />
+              <Card className="feature-card mb-8">
+                <CardHeader>
+                  <CardTitle>Edit Product</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="quantity">Quantity</Label>
+                      <Input
+                        type="number"
+                        id="quantity"
+                        value={formData.quantity}
+                        onChange={handleQuantityChange}
+                      />
+                      {quantityError && <p className="text-red-500 text-sm">{quantityError}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="minThreshold">Minimum Threshold</Label>
+                      <Input
+                        type="number"
+                        id="minThreshold"
+                        value={formData.minThreshold}
+                        onChange={e => setFormData({ ...formData, minThreshold: parseInt(e.target.value) || 0 })}
+                        placeholder="Stock level warning threshold"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="price">Price ($)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      placeholder="Enter price"
-                    />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleSave}
+                      disabled={isUpdating}
+                    >
+                      {isUpdating ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Updating...
+                        </div>
+                      ) : (
+                        'Save'
+                      )}
+                    </Button>
+                    <Button variant="outline" onClick={resetForm} disabled={isUpdating}>Cancel</Button>
                   </div>
-                  <div>
-                    <Label htmlFor="quantity">Stock</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      placeholder="Enter quantity"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="imageUrl">Image URL</Label>
-                    <Input
-                      id="imageUrl"
-                      value={formData.imageUrl}
-                      onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                      placeholder="Enter image URL"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Enter product description"
-                    rows={3}
-                  />
-                </div>
-                <div className="flex space-x-2">
-                  <Button onClick={handleSave} className="brand-gradient text-white">
-                    Save Changes
-                  </Button>
-                  <Button variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
           )}
 
-          {/* Stock Table */}
-          <Card className="feature-card">
+          <Card className="feature-card text-white">
             <CardHeader>
               <CardTitle>Product Inventory</CardTitle>
-              <CardDescription>
-                Current stock levels with distributor request options
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[100px]">Stock ID</TableHead>
-                      <TableHead className="w-[120px]">Category</TableHead>
-                      <TableHead>Product Name</TableHead>
-                      <TableHead className="w-[100px]">Quantity</TableHead>
-                      <TableHead className="w-[120px]">Price</TableHead>
-                      <TableHead className="w-[120px]">Expiry Date</TableHead>
-                      <TableHead className="w-[120px]">Actions</TableHead>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Qty</TableHead>
+                      <TableHead>MST</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Expiry</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredStock.map((item) => {
-                      const isLow = isLowStock(item.quantity, item.minThreshold);
-                      const expired = isExpired(item.expiryDate);
-                      const needsHighlight = isLow || expired;
-                      
-                      return (
-                        <TableRow 
-                          key={item.id} 
-                          className={needsHighlight ? "bg-destructive/10 border-destructive/30" : ""}
-                        >
-                          <TableCell className="font-medium">{item.id}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {getCategoryIcon(item.category)}
-                              <span className="text-sm">{item.category}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant={isLow ? "destructive" : "secondary"}
+                    {filteredStock.length > 0 ? (
+                      filteredStock.map(item => {
+                        const product = item.product;
+                        const isLow = isLowStock(item.quantity, item.min_threshold);
+                        const expired = isExpired(item.expiry_date);
+                        return (
+                          <TableRow key={item.id} className={`${isLow || expired ? 'bg-transparent' : ''} hover:bg-transparent`}>
+                            <TableCell>{item.id}</TableCell>
+                            <TableCell className="flex items-center gap-2">{getCategoryIcon(product.category)} {product.category}</TableCell>
+                            <TableCell>{product.name}</TableCell>
+                            <TableCell><Badge variant={isLow ? "destructive" : "secondary"}>{item.quantity}</Badge></TableCell>
+                            <TableCell>{item.min_threshold}</TableCell>
+                            <TableCell>${product.retail_price}</TableCell>
+                            <TableCell>{item.expiry_date?.slice(0, 10)}</TableCell>
+                            <TableCell className="flex gap-1">
+                              <Button onClick={() => handleEdit(item)} size="sm"><Edit2 className="h-4 w-4" /></Button>
+                              <Button onClick={() => handleRequestRestock(item)} size="sm"><Plus className="h-4 w-4" /></Button>
+                              <Button onClick={() => handleDelete(item.id)} size="sm" variant="outline" className="text-red-500"><Trash2 className="h-4 w-4" /></Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                          <div className="flex flex-col items-center justify-center space-y-4">
+                            <Package className="h-8 w-8 text-muted-foreground" />
+                            <div className="text-lg font-medium">No stock items available</div>
+                            <p className="text-sm text-muted-foreground">
+                              Get started by adding new stock to your inventory.
+                            </p>
+                            <Button 
+                              onClick={() => handleAddNewStock()}
+                              className="flex items-center gap-2"
                             >
-                              {item.quantity}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>${item.price}</TableCell>
-                          <TableCell>
-                            <span 
-                              className={`px-2 py-1 rounded text-sm ${
-                                expired
-                                  ? 'bg-destructive/20 text-destructive' 
-                                  : 'bg-secondary text-secondary-foreground'
-                              }`}
-                            >
-                              {item.expiryDate}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEdit(item)}
-                                className="text-primary hover:text-primary"
-                                title="Edit Product"
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRequestRestock(item)}
-                                className="brand-gradient text-white border-0"
-                                title="Request from Distributor"
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDelete(item.id)}
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                title="Delete Product"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                              <Plus className="h-4 w-4" />
+                              Add Stock
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -438,8 +493,6 @@ const StockDisplay = () => {
           </Card>
         </div>
       </div>
-
-    </div>
   );
 };
 

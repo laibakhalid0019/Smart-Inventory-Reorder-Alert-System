@@ -7,16 +7,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Package, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+interface LoginResponse {
+  role: string;
+  username: string;
+}
 
 const Login = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: ''
   });
-  const [selectedRole, setSelectedRole] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,14 +34,10 @@ const Login = () => {
     }));
   };
 
-  const handleRoleChange = (value: string) => {
-    setSelectedRole(value);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.username || !formData.password || !selectedRole) {
+    if (!formData.username || !formData.password) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -49,29 +48,31 @@ const Login = () => {
 
     setIsLoading(true);
 
+
     try {
-      const response = await axios.post(
+      const response = await axios.post<LoginResponse>(
           'http://localhost:3000/auth/login',
           {
             username: formData.username,
             password: formData.password
           },
           {
-            withCredentials: true
+            withCredentials: true // Important for receiving cookies
           }
       );
 
       const { role, username } = response.data;
+      console.log("Role received from backend:", role);
 
       // ✅ Save user to Redux
       dispatch(setUser({ username, role: role.toLowerCase() }));
 
       // ✅ Navigate based on role
-      switch (role.toUpperCase()) {
+      switch (role) {
         case 'RETAILER':
           navigate('/dashboard/retailer');
           break;
-        case 'DELIVERY_AGENT':
+        case 'DELIVERY':
           navigate('/dashboard/delivery');
           break;
         case 'DISTRIBUTOR':
@@ -86,7 +87,7 @@ const Login = () => {
 
       toast({
         title: "Login Successful!",
-        description: `Welcome back, ${username}! Redirecting to ${role} dashboard...`
+        description: `Welcome back, ${username}! Redirecting to dashboard...`
       });
 
     } catch (error) {
@@ -173,20 +174,6 @@ const Login = () => {
                       )}
                     </Button>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select onValueChange={handleRoleChange} required>
-                    <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/50">
-                      <SelectValue placeholder="Select your role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="retailer">Retailer</SelectItem>
-                      <SelectItem value="distributor">Distributor</SelectItem>
-                      <SelectItem value="delivery-agent">Delivery Agent</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <Button

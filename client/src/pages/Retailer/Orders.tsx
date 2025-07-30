@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import RetailerNavigation from '@/components/RetailerNavigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,108 +18,194 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { FileText, CreditCard, Package, Truck, CheckCircle, Clock } from 'lucide-react';
+import { FileText, CreditCard, Package, Truck, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import axios from 'axios';
+import { useToast } from '@/hooks/use-toast';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import StripePaymentForm from '@/components/StripePaymentForm';
+import { RootState } from '@/Redux/Store';
+import { fetchOrders, processPayment, updateOrderStatus } from '@/Redux/Store/ordersSlice';
+import type { AppDispatch } from '@/Redux/Store';
 
-// Mock data for orders
-const initialOrders = [
-  {
-    id: 'ORD001',
-    retailerId: 'RET001',
-    distributorId: 'DIST001',
-    distributorName: 'TechMart Distributors',
-    productName: 'iPhone 15 Pro',
-    quantity: 5,
-    totalAmount: 4995,
-    status: 'Pending'
-  },
-  {
-    id: 'ORD002',
-    retailerId: 'RET001',
-    distributorId: 'DIST003',
-    distributorName: 'Fashion Wholesale',
-    productName: 'Cotton T-Shirt',
-    quantity: 15,
-    totalAmount: 375,
-    status: 'Paid'
-  },
-  {
-    id: 'ORD003',
-    retailerId: 'RET001',
-    distributorId: 'DIST005',
-    distributorName: 'MedSupply Inc.',
-    productName: 'Paracetamol 500mg',
-    quantity: 30,
-    totalAmount: 240,
-    status: 'Dispatched'
-  },
-  {
-    id: 'ORD004',
-    retailerId: 'RET001',
-    distributorId: 'DIST002',
-    distributorName: 'Digital Supply Co.',
-    productName: 'Samsung Galaxy S24',
-    quantity: 8,
-    totalAmount: 7192,
-    status: 'Received'
-  },
-  {
-    id: 'ORD005',
-    retailerId: 'RET001',
-    distributorId: 'DIST004',
-    distributorName: 'Style Supply Chain',
-    productName: 'Denim Jeans',
-    quantity: 12,
-    totalAmount: 780,
-    status: 'Pending'
-  }
-];
+// Initialize Stripe with your public key
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY || 'your-public-key-here');
+
+// Define payment DTO interface to match the API
+interface PaymentDTO {
+  amount: number;
+  currency: string;
+}
+
+// Define the interface for Order data structure from API
+interface OrderItem {
+  orderId: number;
+  orderNumber: string;
+  request: {
+    requestId: number;
+    retailer: {
+      id: number;
+      username: string;
+    };
+    distributor: {
+      id: number;
+      username: string;
+    };
+    product: {
+      id: number;
+      name: string;
+      category: string;
+      retail_price: number;
+    };
+    quantity: number;
+    price: number;
+    status: string;
+  };
+  retailer: {
+    id: number;
+    username: string;
+  };
+  distributor: {
+    id: number;
+    username: string;
+  };
+  product: {
+    id: number;
+    name: string;
+    category: string;
+  };
+  quantity: number;
+  status: string;
+  price: number;
+  deliveryAgent?: {
+    id: number;
+    username: string;
+  };
+  dispatchedAt?: string;
+  deliveredAt?: string;
+  paymentTimestamp?: string;
+}
 
 const Orders = () => {
-  const [orders, setOrders] = useState(initialOrders);
-  const [paymentModal, setPaymentModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [paymentData, setPaymentData] = useState({
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
-    cardHolder: ''
-  });
+  const dispatch = useDispatch<AppDispatch>();
+  const { items: orders, loading, error } = useSelector((state: RootState) => state.orders);
 
-  const handlePayment = (order: any) => {
-    setSelectedOrder(order);
-    setPaymentModal(true);
-    setPaymentData({ cardNumber: '', expiryDate: '', cvv: '', cardHolder: '' });
+  const [paymentModal, setPaymentModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
+  const [processing, setProcessing] = useState<boolean>(false);
+  const [clientSecret, setClientSecret] = useState<string>('');
+  const { toast } = useToast();
+
+  // Fetch orders from API
+  useEffect(() => {
+    dispatch(fetchOrders());
+  }, [dispatch]);
+
+  const handlePayment = async (order: OrderItem) => {
+    try {
+      setSelectedOrder(order);
+      setProcessing(true);
+      
+      // Process payment through Redux thunk
+      const resultAction = await dispatch(
+        processPayment({ orderId: order.orderId, amount: order.price })
+      );
+      
+      if (processPayment.fulfilled.match(resultAction)) {
+        setClientSecret(resultAction.payload.clientSecret);
+        setPaymentModal(true);
+      } else if (processPayment.rejected.match(resultAction) && resultAction.payload) {
+        toast({
+          variant: 'destructive',
+          title: 'Payment initialization failed',
+          description: resultAction.payload as string,
+        });
+      }
+
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Payment initialization failed',
+        description: 'Failed to initiate payment process. Please try again.',
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
-  const confirmPayment = () => {
+  const handlePaymentSuccess = () => {
     if (selectedOrder) {
-      setOrders(orders.map(order => 
-        order.id === selectedOrder.id 
-          ? { ...order, status: 'Paid' }
-          : order
-      ));
+      // Update order status through Redux
+      dispatch(updateOrderStatus({
+        orderId: selectedOrder.orderId,
+        status: 'PAID'
+      }));
+
+      toast({
+        title: 'Payment successful',
+        description: `Payment for order ${selectedOrder.orderNumber} was processed successfully.`,
+      });
+      
       setPaymentModal(false);
       setSelectedOrder(null);
     }
   };
 
+  const handlePaymentError = (message: string) => {
+    toast({
+      variant: 'destructive',
+      title: 'Payment failed',
+      description: message || 'Your payment was not successful, please try again.',
+    });
+  };
+
   const handlePrintPDF = () => {
-    console.log('Generating PDF for orders...');
+    // Convert orders to CSV content
+    const headers = ['Order ID', 'Order Number', 'Distributor', 'Product', 'Quantity', 'Price', 'Status', 'Dispatched At', 'Delivered At'];
+    const csvContent = [
+      headers.join(','),
+      ...orders.map(order => [
+        order.orderId,
+        order.orderNumber,
+        order.distributor.username,
+        order.product.name,
+        order.quantity,
+        order.price,
+        order.status,
+        order.dispatchedAt ? new Date(order.dispatchedAt).toLocaleDateString() : 'N/A',
+        order.deliveredAt ? new Date(order.deliveredAt).toLocaleDateString() : 'N/A'
+      ].join(','))
+    ].join('\n');
+
+    // Create a Blob containing the CSV data
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+    // Create a download link and trigger it
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `orders_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: 'Export successful',
+      description: 'Your orders have been exported as CSV.',
+    });
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Pending':
+    switch (status.toUpperCase()) {
+      case 'PENDING':
         return <Clock className="h-4 w-4" />;
-      case 'Paid':
+      case 'PAID':
         return <CreditCard className="h-4 w-4" />;
-      case 'Dispatched':
+      case 'DISPATCHED':
         return <Truck className="h-4 w-4" />;
-      case 'Received':
+      case 'DELIVERED':
         return <CheckCircle className="h-4 w-4" />;
       default:
         return <Package className="h-4 w-4" />;
@@ -126,18 +213,28 @@ const Orders = () => {
   };
 
   const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'Pending':
+    switch (status.toUpperCase()) {
+      case 'PENDING':
         return 'default';
-      case 'Paid':
+      case 'PAID':
         return 'secondary';
-      case 'Dispatched':
+      case 'DISPATCHED':
         return 'default';
-      case 'Received':
+      case 'DELIVERED':
         return 'secondary';
       default:
         return 'default';
     }
+  };
+
+  // Format date from ISO string
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
   return (
@@ -158,9 +255,14 @@ const Orders = () => {
                   <Package className="h-5 w-5 text-primary" />
                   Order History
                 </span>
-                <Button onClick={handlePrintPDF} variant="outline" className="flex items-center gap-2">
+                <Button 
+                  onClick={handlePrintPDF} 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  disabled={orders.length === 0 || loading}
+                >
                   <FileText className="h-4 w-4" />
-                  Print as PDF
+                  Export as CSV
                 </Button>
               </CardTitle>
               <CardDescription>
@@ -168,65 +270,84 @@ const Orders = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[100px]">Order No</TableHead>
-                      <TableHead className="w-[120px]">Retailer ID</TableHead>
-                      <TableHead className="w-[120px]">Distributor ID</TableHead>
-                      <TableHead>Distributor Name</TableHead>
-                      <TableHead>Product Name</TableHead>
-                      <TableHead className="w-[100px]">Quantity</TableHead>
-                      <TableHead className="w-[120px]">Amount</TableHead>
-                      <TableHead className="w-[120px]">Status</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.id}</TableCell>
-                        <TableCell>{order.retailerId}</TableCell>
-                        <TableCell>{order.distributorId}</TableCell>
-                        <TableCell>{order.distributorName}</TableCell>
-                        <TableCell>{order.productName}</TableCell>
-                        <TableCell>{order.quantity}</TableCell>
-                        <TableCell>${order.totalAmount.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={getStatusVariant(order.status)}
-                            className="flex items-center gap-1"
-                          >
-                            {getStatusIcon(order.status)}
-                            {order.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {order.status === 'Pending' && (
-                            <Button
-                              onClick={() => handlePayment(order)}
-                              size="sm"
-                              className="brand-gradient text-white"
-                            >
-                              <CreditCard className="h-4 w-4 mr-1" />
-                              Pay
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              
-              {orders.length === 0 && (
+              {loading ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2">Loading orders...</span>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8 text-destructive">
+                  <p>{error}</p>
+                  <Button onClick={() => window.location.reload()} className="mt-4">
+                    Try Again
+                  </Button>
+                </div>
+              ) : orders.length === 0 ? (
                 <div className="text-center py-12">
                   <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">No Orders Found</h3>
                   <p className="text-muted-foreground">
                     You haven't placed any orders yet. Start by making requests in the Stock Display.
                   </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[100px]">Order No</TableHead>
+                        <TableHead>Distributor</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead className="w-[100px]">Quantity</TableHead>
+                        <TableHead className="w-[120px]">Price</TableHead>
+                        <TableHead className="w-[120px]">Status</TableHead>
+                        <TableHead className="w-[120px]">Dispatch Date</TableHead>
+                        <TableHead className="w-[120px]">Delivery Date</TableHead>
+                        <TableHead className="w-[100px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orders.map((order) => (
+                        <TableRow key={order.orderId}>
+                          <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                          <TableCell>{order.distributor.username}</TableCell>
+                          <TableCell>{order.product.name}</TableCell>
+                          <TableCell>{order.quantity}</TableCell>
+                          <TableCell>${order.price.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={getStatusVariant(order.status) as any}
+                              className="flex items-center gap-1"
+                            >
+                              {getStatusIcon(order.status)}
+                              {order.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatDate(order.dispatchedAt)}</TableCell>
+                          <TableCell>{formatDate(order.deliveredAt)}</TableCell>
+                          <TableCell>
+                            {order.status.toUpperCase() === 'PENDING' && (
+                              <Button
+                                onClick={() => handlePayment(order)}
+                                size="sm"
+                                className="brand-gradient text-white"
+                                disabled={processing}
+                              >
+                                {processing && selectedOrder?.orderId === order.orderId ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <CreditCard className="h-4 w-4 mr-1" />
+                                    Pay
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </CardContent>
@@ -235,7 +356,9 @@ const Orders = () => {
       </div>
 
       {/* Payment Modal */}
-      <Dialog open={paymentModal} onOpenChange={setPaymentModal}>
+      <Dialog open={paymentModal} onOpenChange={(open) => {
+        if (!open) setPaymentModal(false);
+      }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -243,76 +366,21 @@ const Orders = () => {
               Make Payment
             </DialogTitle>
             <DialogDescription>
-              Complete payment for Order {selectedOrder?.id} - ${selectedOrder?.totalAmount.toLocaleString()}
+              Complete payment for Order {selectedOrder?.orderNumber} - ${selectedOrder?.price.toLocaleString()}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <Label htmlFor="cardHolder">Card Holder Name</Label>
-                <Input
-                  id="cardHolder"
-                  value={paymentData.cardHolder}
-                  onChange={(e) => setPaymentData({ ...paymentData, cardHolder: e.target.value })}
-                  placeholder="Enter card holder name"
+            {clientSecret && (
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <StripePaymentForm 
+                  clientSecret={clientSecret}
+                  amount={selectedOrder?.price || 0}
+                  orderNumber={selectedOrder?.orderNumber || ''}
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
                 />
-              </div>
-              <div>
-                <Label htmlFor="cardNumber">Card Number</Label>
-                <Input
-                  id="cardNumber"
-                  value={paymentData.cardNumber}
-                  onChange={(e) => setPaymentData({ ...paymentData, cardNumber: e.target.value })}
-                  placeholder="1234 5678 9012 3456"
-                  maxLength={19}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="expiryDate">Expiry Date</Label>
-                  <Input
-                    id="expiryDate"
-                    value={paymentData.expiryDate}
-                    onChange={(e) => setPaymentData({ ...paymentData, expiryDate: e.target.value })}
-                    placeholder="MM/YY"
-                    maxLength={5}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="cvv">CVV</Label>
-                  <Input
-                    id="cvv"
-                    value={paymentData.cvv}
-                    onChange={(e) => setPaymentData({ ...paymentData, cvv: e.target.value })}
-                    placeholder="123"
-                    maxLength={4}
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-primary/10 p-4 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Total Amount:</span>
-                <span className="text-2xl font-bold text-primary">
-                  ${selectedOrder?.totalAmount.toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex space-x-2 pt-4">
-              <Button 
-                onClick={confirmPayment} 
-                className="flex-1 brand-gradient text-white"
-                disabled={!paymentData.cardNumber || !paymentData.cardHolder}
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Confirm Payment
-              </Button>
-              <Button variant="outline" onClick={() => setPaymentModal(false)}>
-                Cancel
-              </Button>
-            </div>
+              </Elements>
+            )}
           </div>
         </DialogContent>
       </Dialog>
