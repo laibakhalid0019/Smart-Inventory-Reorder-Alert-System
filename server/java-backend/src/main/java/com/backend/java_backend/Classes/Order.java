@@ -46,6 +46,8 @@ public class Order {
     }
     private Timestamp paymentTimestamp;
 
+    private float price;
+
     @ManyToOne
     @JoinColumn(name = "delivery_agent_id")
     private User deliveryAgent;

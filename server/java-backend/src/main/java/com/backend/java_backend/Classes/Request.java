@@ -29,11 +29,14 @@ public class Request {
 
     private Integer quantity;
 
+    private float price;
+
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(name = "request_status")
+    @Enumerated(EnumType.STRING)
     private Status status = Status.PENDING;
     public enum Status {
         PENDING,

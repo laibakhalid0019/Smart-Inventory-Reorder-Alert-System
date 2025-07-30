@@ -120,6 +120,35 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.OK).body("Logout successfully");
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        System.out.println(username);
+        // If not authenticated or anonymous user
+        if (username.equals("anonymousUser")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
+        }
+
+        Optional<User> userOptional = Optional.ofNullable(userRepository.findByUsername(username));
+
+        if (userOptional.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        }
+
+        User user = userOptional.get();
+
+        // Create response object without sensitive information
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("username", user.getUsername());
+        userInfo.put("email", user.getEmail());
+        userInfo.put("role", user.getRole().name());
+        userInfo.put("address", user.getAddress());
+        userInfo.put("phone", user.getPhone());
+
+        return ResponseEntity.ok(userInfo);
+    }
+
 
 
 

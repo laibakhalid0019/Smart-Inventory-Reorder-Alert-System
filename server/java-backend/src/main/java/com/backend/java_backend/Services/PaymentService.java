@@ -65,7 +65,7 @@ public class PaymentService {
         payment.setCurrency(paymentIntent.getCurrency().toUpperCase());
         payment.setStatus(Payment.Status.SUCCESS);
         payment.setPaymentMethod(paymentIntent.getPaymentMethod());
-        payment.setPaidAt(new Timestamp(paymentIntent.getCreated()));
+        payment.setPaidAt(order.getPaymentTimestamp());
         payment.setCreatedAt(new Timestamp(System.currentTimeMillis()));
         paymentRepo.save(payment);
 

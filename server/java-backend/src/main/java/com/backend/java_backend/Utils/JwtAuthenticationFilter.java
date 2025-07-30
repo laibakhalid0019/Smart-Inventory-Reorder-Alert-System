@@ -36,7 +36,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         System.out.println(">>> JwtAuthenticationFilter triggered");
 
         String path = request.getRequestURI();
-        if (path.startsWith("/auth")) {
+        if (path.equals("/auth/login") || path.equals("/auth/signup") ||
+                path.equals("/auth/test") || path.equals("/auth/logout")) {
             filterChain.doFilter(request, response);
             return;
         }

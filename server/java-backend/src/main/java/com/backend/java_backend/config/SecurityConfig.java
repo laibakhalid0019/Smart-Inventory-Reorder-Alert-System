@@ -46,7 +46,8 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 🔥 ADD THIS
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/auth/login", "/auth/signup", "/auth/test", "/auth/logout").permitAll()
+                        .requestMatchers("/auth/me").authenticated()
                         .requestMatchers("/delivery/**").hasAuthority("DELIVERY")
                         .requestMatchers("/retailer/**").hasAuthority("RETAILER")
                         .requestMatchers("/distributor/**").hasAuthority("DISTRIBUTOR")

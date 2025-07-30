@@ -75,6 +75,7 @@ public class OrderService {
             order.setQuantity(request.getQuantity());
             order.setOrderNumber(UUID.randomUUID().toString().substring(0, 8));
             order.setDeliveryAgent(agent);
+            order.setPrice(request.getPrice());
 
            return orderRepo.save(order);
         } catch (Exception e) {

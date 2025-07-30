@@ -47,6 +47,7 @@ public class RequestService {
         request.setDistributor(userRepo.findById(requestProductDTO.getDistributorId()));
         request.setProduct(productRepo.findById(requestProductDTO.getProductId()));
         request.setQuantity(requestProductDTO.getQuantity());
+        request.setPrice(requestProductDTO.getPrice());
         return requestRepo.save(request);
     }
 

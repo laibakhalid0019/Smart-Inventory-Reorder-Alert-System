@@ -7,4 +7,5 @@ public class RequestProductDTO {
     private long distributorId;
     private long productId;
     private Integer quantity;
+    private float price;
 }
