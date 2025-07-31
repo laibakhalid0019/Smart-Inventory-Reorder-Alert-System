@@ -1,9 +1,33 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, ShoppingCart, TrendingUp, Bell, BarChart3, Users } from 'lucide-react';
+import { Package, ShoppingCart, TrendingUp, Bell, BarChart3 } from 'lucide-react';
 import RetailerNavigation from '@/components/RetailerNavigation';
+import RetailerDashboardCharts from '@/components/dashboard/RetailerDashboardCharts';
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/Redux/Store';
+import { fetchRetailerStock } from '@/Redux/Store/stockSlice';
+import { fetchOrders } from '@/Redux/Store/ordersSlice';
+import { fetchRequests } from '@/Redux/Store/requestsSlice';
 
 const RetailerDashboard = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { items: stock, loading: stockLoading } = useSelector((state: RootState) => state.stock);
+  const { items: orders, loading: ordersLoading } = useSelector((state: RootState) => state.orders);
+  const { items: requests, loading: requestsLoading } = useSelector((state: RootState) => state.requests);
+
+  // Fetch data on component mount
+  useEffect(() => {
+    dispatch(fetchRetailerStock());
+    dispatch(fetchOrders()); // Fixed: Added missing parentheses
+    dispatch(fetchRequests());
+  }, [dispatch]);
+
+  // Calculate summary
+  const totalProducts = stock.length;
+  const lowStockItems = stock.filter(item => item.quantity <= item.min_threshold).length;
+  const pendingOrders = orders.filter(order => order.status === 'PENDING').length;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/10 to-primary/10">
       <RetailerNavigation />
@@ -24,8 +48,8 @@ const RetailerDashboard = () => {
                 <Package className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">1,245</div>
-                <p className="text-xs text-muted-foreground">+20% from last month</p>
+                <div className="text-2xl font-bold">{stockLoading ? "..." : totalProducts}</div>
+                <p className="text-xs text-muted-foreground">Total inventory items</p>
               </CardContent>
             </Card>
 
@@ -35,36 +59,36 @@ const RetailerDashboard = () => {
                 <Bell className="h-4 w-4 text-destructive" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-destructive">23</div>
+                <div className="text-2xl font-bold text-destructive">{stockLoading ? "..." : lowStockItems}</div>
                 <p className="text-xs text-muted-foreground">Requires attention</p>
               </CardContent>
             </Card>
 
             <Card className="feature-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Today's Sales</CardTitle>
+                <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
                 <TrendingUp className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$2,345</div>
-                <p className="text-xs text-muted-foreground">+15% from yesterday</p>
+                <div className="text-2xl font-bold">{ordersLoading ? "..." : pendingOrders}</div>
+                <p className="text-xs text-muted-foreground">Awaiting fulfillment</p>
               </CardContent>
             </Card>
 
             <Card className="feature-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Orders</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
                 <ShoppingCart className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">67</div>
-                <p className="text-xs text-muted-foreground">Pending: 12</p>
+                <div className="text-2xl font-bold">{ordersLoading ? "..." : orders.length}</div>
+                <p className="text-xs text-muted-foreground">All time orders</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Quick Actions and Alerts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <Card className="feature-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -106,32 +130,45 @@ const RetailerDashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                  <p className="text-sm font-medium">Low Stock Alert</p>
-                  <p className="text-xs text-muted-foreground">iPhone 15 Pro - Only 3 units left</p>
-                </div>
-                <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                  <p className="text-sm font-medium">Reorder Suggestion</p>
-                  <p className="text-xs text-muted-foreground">Samsung Galaxy S24 - Consider restocking</p>
-                </div>
-                <div className="p-3 rounded-lg bg-accent/20 border border-accent/30">
-                  <p className="text-sm font-medium">Sales Milestone</p>
-                  <p className="text-xs text-muted-foreground">Congratulations! You've reached $10K in sales this month</p>
-                </div>
+                {stockLoading ? (
+                  <div className="p-3 rounded-lg bg-accent/20 border border-accent/30">
+                    <p className="text-sm font-medium">Loading alerts...</p>
+                  </div>
+                ) : lowStockItems > 0 ? (
+                  <>
+                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                      <p className="text-sm font-medium">Low Stock Alert</p>
+                      <p className="text-xs text-muted-foreground">You have {lowStockItems} items below minimum threshold</p>
+                    </div>
+                    {requests.filter(req => req.status === 'PENDING').length > 0 && (
+                      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                        <p className="text-sm font-medium">Pending Requests</p>
+                        <p className="text-xs text-muted-foreground">{requests.filter(req => req.status === 'PENDING').length} requests awaiting approval</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="p-3 rounded-lg bg-accent/20 border border-accent/30">
+                    <p className="text-sm font-medium">All Good!</p>
+                    <p className="text-xs text-muted-foreground">Your inventory levels are healthy</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Coming Soon Notice */}
-          <div className="mt-8 text-center">
-            <Card className="feature-card inline-block">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-2">🚀 Full Dashboard Coming Soon!</h3>
-                <p className="text-muted-foreground">
-                  We're working on advanced inventory management, detailed analytics, and barcode scanning features.
-                </p>
-              </CardContent>
-            </Card>
+          {/* Analytics Charts */}
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Analytics Dashboard</h2>
+            {stockLoading || ordersLoading || requestsLoading ? (
+              <Card className="feature-card">
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground">Loading dashboard data...</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <RetailerDashboardCharts />
+            )}
           </div>
         </div>
       </div>

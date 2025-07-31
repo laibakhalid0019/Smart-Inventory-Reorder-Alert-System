@@ -1,22 +1,17 @@
 // src/hooks/useAuthRestore.ts
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useDispatch } from 'react-redux';
-import { setUser } from '@/Redux/Store/authSlice';
+import { checkAuthStatus } from '@/Redux/Store/authSlice';
+import { AppDispatch } from '@/Redux/Store';
 
 export const useAuthRestore = () => {
     const [loading, setLoading] = useState(true);
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<AppDispatch>();
 
     useEffect(() => {
-        const checkAuth = async () => {
+        const restoreAuth = async () => {
             try {
-                const response = await axios.get('http://localhost:3000/retailer/stocks/me', {
-                    withCredentials: true
-                });
-
-                const { username, role } = response.data;
-                dispatch(setUser({ username, role: role.toLowerCase() }));
+                await dispatch(checkAuthStatus()).unwrap();
             } catch (error) {
                 console.warn("No active session found or token invalid.");
             } finally {
@@ -24,7 +19,7 @@ export const useAuthRestore = () => {
             }
         };
 
-        checkAuth();
+        restoreAuth();
     }, [dispatch]);
 
     return loading;

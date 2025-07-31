@@ -1,9 +1,128 @@
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Truck, TrendingUp, Users, BarChart3, MapPin } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Package,
+  Truck,
+  TrendingUp,
+  Users,
+  BarChart3,
+  AlertTriangle,
+  DollarSign,
+  Clock,
+  CheckCircle,
+  Calendar,
+  FileText,
+  Loader2
+} from 'lucide-react';
 import DistributorNavigation from '@/components/DistributorNavigation';
+import DistributorDashboardCharts from '@/components/dashboard/DistributorDashboardCharts';
+import { RootState, AppDispatch } from '@/Redux/Store';
+import { fetchProducts } from '@/Redux/Store/productsSlice';
+import { fetchDistributorOrders } from '@/Redux/Store/ordersSlice';
+import { fetchDistributorRequests } from '@/Redux/Store/distributorRequestsSlice';
+import { useToast } from '@/hooks/use-toast';
 
 const DistributorDashboard = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { toast } = useToast();
+
+  // Get data from Redux slices with safe defaults
+  const { products = [], status: productsStatus } = useSelector((state: RootState) => state.products ?? { products: [], status: 'idle' });
+  const { distributorOrders = [], distributorOrdersStatus } = useSelector((state: RootState) => state.orders ?? { distributorOrders: [], distributorOrdersStatus: 'idle' });
+  const { requests = [], status: requestsStatus } = useSelector((state: RootState) => state.distributorRequests ?? { requests: [], status: 'idle' });
+
+  // Fetch all data when component mounts
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        await Promise.all([
+          dispatch(fetchProducts()).unwrap(),
+          dispatch(fetchDistributorOrders()).unwrap(),
+          dispatch(fetchDistributorRequests()).unwrap()
+        ]);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load dashboard data. Please try again.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchData();
+  }, [dispatch, toast]);
+
+  // Loading state check before calculations
+  const isLoading = productsStatus === 'loading' || distributorOrdersStatus === 'loading' || requestsStatus === 'loading';
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-accent/10 to-primary/10">
+        <DistributorNavigation />
+        <div className="pt-8 pb-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+            <p className="mt-2 text-muted-foreground">Loading dashboard data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate metrics from real data with safe defaults
+  const totalProducts = Array.isArray(products) ? products.length : 0;
+  const lowStockProducts = Array.isArray(products) ? products.filter(p => p?.quantity <= p?.mst).length : 0;
+  const expiringSoonProducts = Array.isArray(products) ? products.filter(p => {
+    if (!p?.expiry_date) return false;
+    const today = new Date();
+    const expiryDate = new Date(p.expiry_date);
+    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+    return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+  }).length : 0;
+
+  // Order metrics with safe defaults
+  const totalOrders = Array.isArray(distributorOrders) ? distributorOrders.length : 0;
+  const pendingOrders = Array.isArray(distributorOrders) ? distributorOrders.filter(o => o?.status?.toLowerCase() === 'pending').length : 0;
+  const dispatchedOrders = Array.isArray(distributorOrders) ? distributorOrders.filter(o => o?.status?.toLowerCase() === 'dispatched').length : 0;
+  const deliveredOrders = Array.isArray(distributorOrders) ? distributorOrders.filter(o => o?.status?.toLowerCase() === 'delivered').length : 0;
+  const paidOrders = Array.isArray(distributorOrders) ? distributorOrders.filter(o => o?.status?.toLowerCase() === 'paid').length : 0;
+
+  // Revenue calculations with safe defaults
+  const totalRevenue = Array.isArray(distributorOrders)
+    ? distributorOrders.reduce((sum, order) => sum + (order?.price || order?.request?.price || 0), 0)
+    : 0;
+
+  const monthlyRevenue = Array.isArray(distributorOrders)
+    ? distributorOrders
+      .filter(order => {
+        if (!order?.request?.createdAt) return false;
+        const orderDate = new Date(order.request.createdAt);
+        const currentDate = new Date();
+        return orderDate.getMonth() === currentDate.getMonth() &&
+               orderDate.getFullYear() === currentDate.getFullYear();
+      })
+      .reduce((sum, order) => sum + (order?.price || order?.request?.price || 0), 0)
+    : 0;
+
+  // Inventory value
+  const totalInventoryValue = products?.reduce((sum, p) =>
+    sum + ((p?.retail_price || 0) * (p?.quantity || 0)), 0) || 0;
+
+  // Request metrics
+  const totalRequests = requests?.length || 0;
+  const pendingRequests = requests?.filter(r => r?.status === 'PENDING')?.length || 0;
+  const approvedRequests = requests?.filter(r => r?.status === 'APPROVED')?.length || 0;
+
+  // Unique retailers count
+  const uniqueRetailers = new Set(
+    distributorOrders
+      .filter(order => order?.retailer?.id)
+      .map(order => order.retailer.id)
+  ).size;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/10 to-primary/10">
       <DistributorNavigation />
@@ -16,16 +135,16 @@ const DistributorDashboard = () => {
             <p className="text-muted-foreground">Manage your distribution network and wholesale operations.</p>
           </div>
 
-          {/* Stats Grid */}
+          {/* Main Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <Card className="feature-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Inventory</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Products</CardTitle>
                 <Package className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">15,420</div>
-                <p className="text-xs text-muted-foreground">Across all warehouses</p>
+                <div className="text-2xl font-bold">{isLoading ? "..." : totalProducts}</div>
+                <p className="text-xs text-muted-foreground">Active in catalog</p>
               </CardContent>
             </Card>
 
@@ -35,62 +154,109 @@ const DistributorDashboard = () => {
                 <Users className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">89</div>
-                <p className="text-xs text-muted-foreground">+5 new this month</p>
+                <div className="text-2xl font-bold">{isLoading ? "..." : uniqueRetailers}</div>
+                <p className="text-xs text-muted-foreground">Ordering from you</p>
               </CardContent>
             </Card>
 
             <Card className="feature-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
                 <Truck className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">34</div>
-                <p className="text-xs text-muted-foreground">12 ready to ship</p>
+                <div className="text-2xl font-bold">{isLoading ? "..." : totalOrders}</div>
+                <p className="text-xs text-muted-foreground">{pendingOrders} pending</p>
               </CardContent>
             </Card>
 
             <Card className="feature-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
-                <TrendingUp className="h-4 w-4 text-primary" />
+                <DollarSign className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$45,230</div>
-                <p className="text-xs text-muted-foreground">+12% from last month</p>
+                <div className="text-2xl font-bold">${isLoading ? "..." : monthlyRevenue.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">This month</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Secondary Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card className="feature-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-destructive">{isLoading ? "..." : lowStockProducts}</div>
+                <p className="text-xs text-muted-foreground">Need restocking</p>
+              </CardContent>
+            </Card>
+
+            <Card className="feature-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
+                <Calendar className="h-4 w-4 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-500">{isLoading ? "..." : expiringSoonProducts}</div>
+                <p className="text-xs text-muted-foreground">Within 30 days</p>
+              </CardContent>
+            </Card>
+
+            <Card className="feature-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Inventory Value</CardTitle>
+                <TrendingUp className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${isLoading ? "..." : totalInventoryValue.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Total worth</p>
+              </CardContent>
+            </Card>
+
+            <Card className="feature-card">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                <Clock className="h-4 w-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">{isLoading ? "..." : pendingRequests}</div>
+                <p className="text-xs text-muted-foreground">Need review</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions and Alerts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <Card className="feature-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 text-primary" />
-                  Distribution Management
+                  Quick Actions
                 </CardTitle>
                 <CardDescription>
-                  Manage your wholesale operations and retailer network
+                  Manage your distribution operations efficiently
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button className="w-full justify-start brand-gradient text-white">
                   <Package className="h-4 w-4 mr-2" />
-                  Manage Inventory
+                  Manage Products ({totalProducts})
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
-                  <Users className="h-4 w-4 mr-2" />
-                  View Retailer Network
+                  <FileText className="h-4 w-4 mr-2" />
+                  View Orders ({totalOrders})
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
-                  <Truck className="h-4 w-4 mr-2" />
-                  Track Shipments
+                  <Clock className="h-4 w-4 mr-2" />
+                  Review Requests ({pendingRequests})
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Sales Analytics
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Revenue Analytics
                 </Button>
               </CardContent>
             </Card>
@@ -98,74 +264,155 @@ const DistributorDashboard = () => {
             <Card className="feature-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-primary" />
-                  Recent Activities
+                  <AlertTriangle className="h-5 w-5 text-primary" />
+                  Business Alerts
                 </CardTitle>
                 <CardDescription>
-                  Track your distribution activities and performance
+                  Important notifications and updates
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                  <p className="text-sm font-medium">New Order Received</p>
-                  <p className="text-xs text-muted-foreground">TechMart - 50 units of iPhone 15</p>
-                </div>
-                <div className="p-3 rounded-lg bg-accent/20 border border-accent/30">
-                  <p className="text-sm font-medium">Shipment Delivered</p>
-                  <p className="text-xs text-muted-foreground">ElectroStore - Order #1234 completed</p>
-                </div>
-                <div className="p-3 rounded-lg bg-secondary/20 border border-secondary/30">
-                  <p className="text-sm font-medium">New Retailer Onboarded</p>
-                  <p className="text-xs text-muted-foreground">MobileHub joined your network</p>
-                </div>
+                {isLoading ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                    <span>Loading alerts...</span>
+                  </div>
+                ) : (
+                  <>
+                    {lowStockProducts > 0 && (
+                      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                        <p className="text-sm font-medium">Low Stock Alert</p>
+                        <p className="text-xs text-muted-foreground">{lowStockProducts} products below minimum threshold</p>
+                      </div>
+                    )}
+
+                    {expiringSoonProducts > 0 && (
+                      <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                        <p className="text-sm font-medium">Expiry Alert</p>
+                        <p className="text-xs text-muted-foreground">{expiringSoonProducts} products expiring within 30 days</p>
+                      </div>
+                    )}
+
+                    {pendingRequests > 0 && (
+                      <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                        <p className="text-sm font-medium">Pending Requests</p>
+                        <p className="text-xs text-muted-foreground">{pendingRequests} retailer requests awaiting approval</p>
+                      </div>
+                    )}
+
+                    {pendingOrders > 0 && (
+                      <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                        <p className="text-sm font-medium">Orders to Process</p>
+                        <p className="text-xs text-muted-foreground">{pendingOrders} orders ready for dispatch</p>
+                      </div>
+                    )}
+
+                    {lowStockProducts === 0 && expiringSoonProducts === 0 && pendingRequests === 0 && pendingOrders === 0 && (
+                      <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <p className="text-sm font-medium">All Systems Good!</p>
+                        <p className="text-xs text-muted-foreground">No urgent alerts at the moment</p>
+                      </div>
+                    )}
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Warehouse Overview */}
+          {/* Order Status Overview */}
+          <Card className="feature-card mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" />
+                Order Status Overview
+              </CardTitle>
+              <CardDescription>
+                Current status of all orders in your system
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                  <div className="text-2xl font-bold text-yellow-600">{pendingOrders}</div>
+                  <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Pending
+                  </div>
+                </div>
+
+                <div className="text-center p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <div className="text-2xl font-bold text-blue-600">{paidOrders}</div>
+                  <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                    <DollarSign className="h-3 w-3" />
+                    Paid
+                  </div>
+                </div>
+
+                <div className="text-center p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                  <div className="text-2xl font-bold text-purple-600">{dispatchedOrders}</div>
+                  <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                    <Truck className="h-3 w-3" />
+                    Dispatched
+                  </div>
+                </div>
+
+                <div className="text-center p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                  <div className="text-2xl font-bold text-green-600">{deliveredOrders}</div>
+                  <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Delivered
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Revenue Summary */}
+          <Card className="feature-card mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-primary" />
+                Revenue Summary
+              </CardTitle>
+              <CardDescription>
+                Financial overview of your distribution business
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">${totalRevenue.toLocaleString()}</div>
+                  <div className="text-sm text-muted-foreground">Total Revenue</div>
+                </div>
+
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">${monthlyRevenue.toLocaleString()}</div>
+                  <div className="text-sm text-muted-foreground">This Month</div>
+                </div>
+
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    ${totalOrders > 0 ? Math.round(totalRevenue / totalOrders).toLocaleString() : '0'}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Average Order Value</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Analytics Dashboard */}
           <div className="mt-8">
-            <Card className="feature-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-primary" />
-                  Warehouse Overview
-                </CardTitle>
-                <CardDescription>
-                  Monitor your distribution centers and stock levels
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-lg bg-primary/5 border">
-                    <h4 className="font-semibold">Main Warehouse</h4>
-                    <p className="text-sm text-muted-foreground">New York</p>
-                    <p className="text-lg font-bold text-primary">8,450 units</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-accent/10 border">
-                    <h4 className="font-semibold">West Coast Hub</h4>
-                    <p className="text-sm text-muted-foreground">Los Angeles</p>
-                    <p className="text-lg font-bold text-primary">4,320 units</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-secondary/10 border">
-                    <h4 className="font-semibold">Regional Center</h4>
-                    <p className="text-sm text-muted-foreground">Chicago</p>
-                    <p className="text-lg font-bold text-primary">2,650 units</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Coming Soon Notice */}
-          <div className="mt-8 text-center">
-            <Card className="feature-card inline-block">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-2">🚀 Advanced Features Coming Soon!</h3>
-                <p className="text-muted-foreground">
-                  Multi-warehouse management, bulk order processing, and advanced retailer analytics.
-                </p>
-              </CardContent>
-            </Card>
+            <h2 className="text-2xl font-bold text-foreground mb-6">Analytics Dashboard</h2>
+            {isLoading ? (
+              <Card className="feature-card">
+                <CardContent className="p-6 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+                  <p className="text-muted-foreground">Loading analytics data...</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <DistributorDashboardCharts />
+            )}
           </div>
         </div>
       </div>
@@ -174,3 +421,4 @@ const DistributorDashboard = () => {
 };
 
 export default DistributorDashboard;
+

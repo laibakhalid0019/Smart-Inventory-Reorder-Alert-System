@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -10,80 +10,43 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Package, Truck, CheckCircle, Clock, CreditCard } from 'lucide-react';
+import { FileText, Package, Truck, CheckCircle, Clock, CreditCard, Loader2, Image as ImageIcon } from 'lucide-react';
 import DistributorNavigation from '@/components/DistributorNavigation';
-
-// Mock data for orders
-const initialOrders = [
-  {
-    id: 'ORD001',
-    orderNo: 'ORD-2024-001',
-    retailerName: 'TechStore Downtown',
-    requestId: 'REQ001',
-    productName: 'iPhone 15 Pro Max',
-    quantity: 5,
-    assignedAgent: 'John Smith',
-    agentId: 'DA001',
-    status: 'dispatched',
-    createdAt: '2024-01-15',
-    totalAmount: 5995
-  },
-  {
-    id: 'ORD002',
-    orderNo: 'ORD-2024-002',
-    retailerName: 'Fashion Hub',
-    requestId: 'REQ002',
-    productName: 'Cotton Premium T-Shirt',
-    quantity: 50,
-    assignedAgent: 'Sarah Johnson',
-    agentId: 'DA002',
-    status: 'delivered',
-    createdAt: '2024-01-14',
-    totalAmount: 1450
-  },
-  {
-    id: 'ORD003',
-    orderNo: 'ORD-2024-003',
-    retailerName: 'HealthPlus Pharmacy',
-    requestId: 'REQ006',
-    productName: 'Vitamin D3 Tablets',
-    quantity: 25,
-    assignedAgent: 'Mike Wilson',
-    agentId: 'DA003',
-    status: 'paid',
-    createdAt: '2024-01-10',
-    totalAmount: 450
-  },
-  {
-    id: 'ORD004',
-    orderNo: 'ORD-2024-004',
-    retailerName: 'TechStore Downtown',
-    requestId: 'REQ005',
-    productName: 'Wireless Earbuds Pro',
-    quantity: 10,
-    assignedAgent: 'Lisa Brown',
-    agentId: 'DA004',
-    status: 'pending',
-    createdAt: '2024-01-11',
-    totalAmount: 1990
-  },
-  {
-    id: 'ORD005',
-    orderNo: 'ORD-2024-005',
-    retailerName: 'MediCare Pharmacy',
-    requestId: 'REQ003',
-    productName: 'Paracetamol 500mg',
-    quantity: 100,
-    assignedAgent: 'John Smith',
-    agentId: 'DA001',
-    status: 'dispatched',
-    createdAt: '2024-01-13',
-    totalAmount: 1200
-  }
-];
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '@/Redux/Store';
+import { fetchDistributorOrders } from '@/Redux/Store/ordersSlice';
+import { useToast } from '@/hooks/use-toast';
 
 const DistributorViewOrder = () => {
-  const [orders] = useState(initialOrders);
+  const dispatch = useDispatch<AppDispatch>();
+  const { distributorOrders, distributorOrdersStatus, error } = useSelector((state: RootState) => state.orders);
+  const { toast } = useToast();
+
+  // Fetch distributor orders when component mounts
+  useEffect(() => {
+    dispatch(fetchDistributorOrders());
+  }, [dispatch]);
+
+  // Show toast when there's an error
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
+
+  // Format date from ISO string
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   const handlePrintPDF = () => {
     // Prepare document for printing
@@ -92,11 +55,11 @@ const DistributorViewOrder = () => {
 
     const tableContent = document.querySelector('.orders-table')?.outerHTML || '';
     const currentDate = new Date().toLocaleDateString();
-    const pendingOrders = orders.filter(o => o.status === 'pending').length;
-    const dispatchedOrders = orders.filter(o => o.status === 'dispatched').length;
-    const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
-    const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-    
+    const pendingOrders = distributorOrders.filter(o => o.status.toLowerCase() === 'pending').length;
+    const dispatchedOrders = distributorOrders.filter(o => o.status.toLowerCase() === 'dispatched').length;
+    const deliveredOrders = distributorOrders.filter(o => o.status.toLowerCase() === 'delivered').length;
+    const totalRevenue = distributorOrders.reduce((sum, o) => sum + (o.price || o.request.price || 0), 0);
+
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -124,7 +87,7 @@ const DistributorViewOrder = () => {
             <p><strong>Pending Orders:</strong> ${pendingOrders}</p>
             <p><strong>Dispatched Orders:</strong> ${dispatchedOrders}</p>
             <p><strong>Delivered Orders:</strong> ${deliveredOrders}</p>
-            <p><strong>Total Orders:</strong> ${orders.length}</p>
+            <p><strong>Total Orders:</strong> ${distributorOrders.length}</p>
             <p><strong>Total Revenue:</strong> $${totalRevenue.toLocaleString()}</p>
           </div>
           ${tableContent.replace(/class="[^"]*"/g, '')}
@@ -140,7 +103,8 @@ const DistributorViewOrder = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    const lowerStatus = status.toLowerCase();
+    switch (lowerStatus) {
       case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
       case 'paid': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
       case 'dispatched': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
@@ -150,7 +114,8 @@ const DistributorViewOrder = () => {
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
+    const lowerStatus = status.toLowerCase();
+    switch (lowerStatus) {
       case 'pending': return <Clock className="h-3 w-3" />;
       case 'paid': return <CreditCard className="h-3 w-3" />;
       case 'dispatched': return <Truck className="h-3 w-3" />;
@@ -159,10 +124,11 @@ const DistributorViewOrder = () => {
     }
   };
 
-  const pendingOrders = orders.filter(o => o.status === 'pending').length;
-  const dispatchedOrders = orders.filter(o => o.status === 'dispatched').length;
-  const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
-  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+  // Calculate stats from distributor orders
+  const pendingOrders = distributorOrders.filter(o => o.status.toLowerCase() === 'pending').length;
+  const dispatchedOrders = distributorOrders.filter(o => o.status.toLowerCase() === 'dispatched').length;
+  const deliveredOrders = distributorOrders.filter(o => o.status.toLowerCase() === 'delivered').length;
+  const totalRevenue = distributorOrders.reduce((sum, o) => sum + (o.price || o.request.price || 0), 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/10 to-primary/10">
@@ -244,44 +210,104 @@ const DistributorViewOrder = () => {
                 <Table className="orders-table">
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[80px]">Image</TableHead>
                       <TableHead className="w-[120px]">Order No</TableHead>
-                      <TableHead>Retailer Name</TableHead>
+                      <TableHead>Retailer</TableHead>
                       <TableHead className="w-[100px]">Request ID</TableHead>
-                      <TableHead>Product Name</TableHead>
+                      <TableHead>Product</TableHead>
                       <TableHead className="w-[80px]">Quantity</TableHead>
-                      <TableHead>Assigned Delivery Agent</TableHead>
+                      <TableHead>Delivery Agent</TableHead>
                       <TableHead className="w-[120px]">Status</TableHead>
-                      <TableHead className="w-[100px]">Date</TableHead>
-                      <TableHead className="w-[100px]">Amount</TableHead>
+                      <TableHead className="w-[100px]">Dispatched</TableHead>
+                      <TableHead className="w-[100px]">Delivered</TableHead>
+                      <TableHead className="w-[100px]">Price</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders.map((order) => (
-                      <TableRow 
-                        key={order.id}
-                        className="transition-colors hover:bg-accent/50"
-                      >
-                        <TableCell className="font-medium">{order.orderNo}</TableCell>
-                        <TableCell className="font-medium">{order.retailerName}</TableCell>
-                        <TableCell className="text-muted-foreground">{order.requestId}</TableCell>
-                        <TableCell>{order.productName}</TableCell>
-                        <TableCell>{order.quantity}</TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{order.assignedAgent}</div>
-                            <div className="text-xs text-muted-foreground">ID: {order.agentId}</div>
+                    {distributorOrdersStatus === 'loading' ? (
+                      <TableRow>
+                        <TableCell colSpan={11} className="h-24 text-center">
+                          <div className="flex items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+                            <span>Loading orders...</span>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={`${getStatusColor(order.status)} flex items-center gap-1 w-fit`}>
-                            {getStatusIcon(order.status)}
-                            {order.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{order.createdAt}</TableCell>
-                        <TableCell className="font-medium">${order.totalAmount.toLocaleString()}</TableCell>
                       </TableRow>
-                    ))}
+                    ) : distributorOrders.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={11} className="h-24 text-center">
+                          No orders found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      distributorOrders.map((order) => (
+                        <TableRow
+                          key={order.orderId}
+                          className="transition-colors hover:bg-accent/50"
+                        >
+                          <TableCell>
+                            <div className="flex items-center justify-center">
+                              {order.product.imageUrl ? (
+                                <img
+                                  src={order.product.imageUrl}
+                                  alt={order.product.name}
+                                  className="w-12 h-12 object-cover rounded"
+                                  onError={(e) => {
+                                    const target = e.currentTarget as HTMLImageElement;
+                                    const fallback = target.nextElementSibling as HTMLElement;
+                                    target.style.display = 'none';
+                                    if (fallback) fallback.style.display = 'flex';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
+                                  <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div className="w-12 h-12 bg-muted rounded flex items-center justify-center" style={{display: 'none'}}>
+                                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">#{order.orderNumber}</TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{order.retailer.username}</div>
+                              <div className="text-xs text-muted-foreground">{order.retailer.email}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">#{order.request.requestId}</TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{order.product.name}</div>
+                              <div className="text-xs text-muted-foreground">{order.product.category}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">{order.quantity}</TableCell>
+                          <TableCell>
+                            {order.deliveryAgent ? (
+                              <div>
+                                <div className="font-medium">{order.deliveryAgent.username}</div>
+                                <div className="text-xs text-muted-foreground">{order.deliveryAgent.email}</div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">Not assigned</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`${getStatusColor(order.status)} flex items-center gap-1 w-fit`}>
+                              {getStatusIcon(order.status)}
+                              {order.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatDate(order.dispatchedAt)}</TableCell>
+                          <TableCell>{formatDate(order.deliveredAt)}</TableCell>
+                          <TableCell className="font-medium">
+                            ${(order.price || order.request.price || 0).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -294,3 +320,4 @@ const DistributorViewOrder = () => {
 };
 
 export default DistributorViewOrder;
+

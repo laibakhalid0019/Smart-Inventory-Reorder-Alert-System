@@ -112,8 +112,13 @@ const Orders = () => {
         processPayment({ orderId: order.orderId, amount: order.price })
       );
       
+      console.log('Payment result action:', resultAction); // Debug log
+
       if (processPayment.fulfilled.match(resultAction)) {
-        setClientSecret(resultAction.payload.clientSecret);
+        console.log('Payment response payload:', resultAction.payload); // Debug log
+        console.log('Client secret:', resultAction.payload.client_secret); // Debug log
+
+        setClientSecret(resultAction.payload.client_secret); // Fixed: Use client_secret instead of clientSecret
         setPaymentModal(true);
       } else if (processPayment.rejected.match(resultAction) && resultAction.payload) {
         toast({
@@ -124,6 +129,7 @@ const Orders = () => {
       }
 
     } catch (error: any) {
+      console.error('Payment error:', error); // Debug log
       toast({
         variant: 'destructive',
         title: 'Payment initialization failed',
@@ -149,6 +155,9 @@ const Orders = () => {
       
       setPaymentModal(false);
       setSelectedOrder(null);
+
+      // Refresh orders to get updated data from server
+      dispatch(fetchOrders());
     }
   };
 

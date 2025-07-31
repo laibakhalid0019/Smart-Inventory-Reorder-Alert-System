@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -14,101 +15,49 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, Calendar, AlertTriangle, DollarSign, FileText, Plus, Image as ImageIcon, Upload, X } from 'lucide-react';
+import { Package, Calendar, AlertTriangle, DollarSign, FileText, Plus, Image as ImageIcon, Upload, X, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import DistributorNavigation from '@/components/DistributorNavigation';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '@/Redux/Store';
+import { fetchProducts, addProduct, updateProduct, deleteProduct } from '@/Redux/Store/productsSlice';
 
-// Mock data for distributor products
-const distributorProducts = [
-  {
-    id: 'PROD001',
-    name: 'iPhone 15 Pro Max',
-    category: 'Electronics',
-    quantity: 45,
-    minThreshold: 10,
-    expiryDate: '2025-12-31',
-    price: 1199,
-    imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=100',
-  },
-  {
-    id: 'PROD002',
-    name: 'Samsung Galaxy S24 Ultra',
-    category: 'Electronics',
-    quantity: 32,
-    minThreshold: 8,
-    expiryDate: '2025-08-15',
-    price: 1299,
-    imageUrl: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=100',
-  },
-  {
-    id: 'PROD003',
-    name: 'MacBook Pro M3',
-    category: 'Electronics',
-    quantity: 15,
-    minThreshold: 5,
-    expiryDate: '2025-06-30',
-    price: 1999,
-    imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=100',
-  },
-  {
-    id: 'PROD004',
-    name: 'Cotton Premium T-Shirt',
-    category: 'Clothes',
-    quantity: 120,
-    minThreshold: 25,
-    expiryDate: '2026-01-31',
-    price: 29,
-    imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=100',
-  },
-  {
-    id: 'PROD005',
-    name: 'Denim Jeans Classic',
-    category: 'Clothes',
-    quantity: 8,
-    minThreshold: 15,
-    expiryDate: '2026-03-15',
-    price: 79,
-    imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=100',
-  },
-  {
-    id: 'PROD006',
-    name: 'Paracetamol 500mg',
-    category: 'Medicine',
-    quantity: 200,
-    minThreshold: 50,
-    expiryDate: '2024-09-30',
-    price: 12,
-    imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=100',
-  },
-  {
-    id: 'PROD007',
-    name: 'Vitamin D3 Tablets',
-    category: 'Medicine',
-    quantity: 3,
-    minThreshold: 20,
-    expiryDate: '2024-11-15',
-    price: 18,
-    imageUrl: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=100',
-  },
-  {
-    id: 'PROD008',
-    name: 'Wireless Earbuds Pro',
-    category: 'Electronics',
-    quantity: 25,
-    minThreshold: 10,
-    expiryDate: '2025-10-20',
-    price: 199,
-    imageUrl: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=100',
-  }
-];
+// Define product type based on the API response
+interface Product {
+  id: number;
+  name: string;
+  category: string;
+  sku: string | null;
+  barcode: string;
+  retail_price: number;
+  cost_price: number;
+  mst: number;
+  quantity: number;
+  expiry_date: string;
+  imageUrl: string;
+  distributor: {
+    id: number;
+    username: string;
+    email: string;
+    address: string;
+    phone: string;
+    role: string;
+  };
+  createdAt: string;
+}
 
 const ViewProduct = () => {
-  const [products, setProducts] = useState(distributorProducts);
+  // Use Redux instead of local state for products
+  const dispatch = useDispatch<AppDispatch>();
+  const { products, status, error } = useSelector((state: RootState) => state.products);
+
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: '',
     category: '',
     price: '',
+    costPrice: '',
     quantity: '',
     expiryDate: '',
     minThreshold: '',
@@ -116,7 +65,27 @@ const ViewProduct = () => {
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editProductId, setEditProductId] = useState<number | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<number | null>(null);
   const { toast } = useToast();
+
+  // Fetch products when component mounts using Redux thunk
+  useEffect(() => {
+    dispatch(fetchProducts());
+  }, [dispatch]);
+
+  // Show toast when there's an error in the Redux state
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
 
   const isLowStock = (quantity: number, threshold: number) => {
     return quantity <= threshold;
@@ -133,6 +102,16 @@ const ViewProduct = () => {
     const expiryDate = new Date(date);
     const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
     return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+  };
+
+  // Format date from ISO string
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,6 +143,105 @@ const ViewProduct = () => {
   };
 
   const handleAddProduct = async () => {
+    if (!newProduct.name || !newProduct.category || !newProduct.price || !newProduct.costPrice || !newProduct.quantity) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Format expiry date to LocalDateTime format (YYYY-MM-DDTHH:mm:ss)
+    let formattedExpiryDate = null;
+    if (newProduct.expiryDate) {
+      formattedExpiryDate = `${newProduct.expiryDate}T00:00:00`;
+    }
+
+    // Prepare product data for API
+    const productData = {
+      name: newProduct.name,
+      category: newProduct.category,
+      retail_price: parseFloat(newProduct.price),
+      cost_price: parseFloat(newProduct.costPrice),
+      quantity: parseInt(newProduct.quantity),
+      expiry_date: formattedExpiryDate,
+      mst: parseInt(newProduct.minThreshold) || 5,
+      imageUrl: newProduct.imageUrl,
+      sku: null,
+      barcode: `${Date.now()}` // Generate a simple barcode for now
+    };
+
+    try {
+      const resultAction = await dispatch(addProduct({
+        ...productData,
+        imageFile: selectedFile || undefined
+      }));
+
+      if (addProduct.fulfilled.match(resultAction)) {
+        // Reset form after successful addition
+        setNewProduct({
+          name: '',
+          category: '',
+          price: '',
+          costPrice: '',
+          quantity: '',
+          expiryDate: '',
+          minThreshold: '',
+          imageUrl: ''
+        });
+        setSelectedFile(null);
+        setImagePreview(null);
+        setIsAddProductOpen(false);
+
+        toast({
+          title: "Product Added",
+          description: "New product has been added to your inventory.",
+        });
+      } else {
+        throw new Error("Add failed");
+      }
+    } catch (error) {
+      toast({
+        title: "Add Failed",
+        description: "Failed to add product. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setIsEditMode(true);
+    setEditProductId(product.id);
+    setIsAddProductOpen(true);
+
+    // Extract date part from expiry_date (remove time component)
+    let expiryDateValue = '';
+    if (product.expiry_date) {
+      // If it contains 'T', extract just the date part
+      expiryDateValue = product.expiry_date.includes('T')
+        ? product.expiry_date.split('T')[0]
+        : product.expiry_date;
+    }
+
+    // Set form fields with product data
+    setNewProduct({
+      name: product.name,
+      category: product.category,
+      price: product.retail_price.toString(),
+      costPrice: product.cost_price.toString(),
+      quantity: product.quantity.toString(),
+      expiryDate: expiryDateValue,
+      minThreshold: product.mst.toString(),
+      imageUrl: product.imageUrl || ''
+    });
+
+    // Reset file and preview
+    setSelectedFile(null);
+    setImagePreview(null);
+  };
+
+  const handleUpdateProduct = async () => {
     if (!newProduct.name || !newProduct.category || !newProduct.price || !newProduct.quantity) {
       toast({
         title: "Validation Error",
@@ -173,46 +251,110 @@ const ViewProduct = () => {
       return;
     }
 
-    let finalImageUrl = 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=100';
-    
-    // If file is selected, use it as the image URL (in a real app, you'd upload to server/cloud)
-    if (imagePreview) {
-      finalImageUrl = imagePreview;
-    } else if (newProduct.imageUrl) {
-      finalImageUrl = newProduct.imageUrl;
+    // Format expiry date to LocalDateTime format (YYYY-MM-DDTHH:mm:ss)
+    let formattedExpiryDate = null;
+    if (newProduct.expiryDate) {
+      // Check if the date already contains time (T00:00:00)
+      if (newProduct.expiryDate.includes('T')) {
+        // Already formatted, use as is
+        formattedExpiryDate = newProduct.expiryDate;
+      } else {
+        // Date only format (YYYY-MM-DD), append time
+        formattedExpiryDate = `${newProduct.expiryDate}T00:00:00`;
+      }
     }
 
-    const product = {
-      id: `PROD${String(products.length + 1).padStart(3, '0')}`,
+    // Prepare product data for API
+    const productData = {
       name: newProduct.name,
       category: newProduct.category,
-      price: parseFloat(newProduct.price),
+      retail_price: parseFloat(newProduct.price),
+      cost_price: parseFloat(newProduct.costPrice), // Set default or get from form if available
       quantity: parseInt(newProduct.quantity),
-      expiryDate: newProduct.expiryDate,
-      minThreshold: parseInt(newProduct.minThreshold) || 5,
-      imageUrl: finalImageUrl
+      expiry_date: formattedExpiryDate,
+      mst: parseInt(newProduct.minThreshold) || 5,
+      imageUrl: newProduct.imageUrl // Include existing image URL
     };
 
-    setProducts([...products, product]);
-    setNewProduct({
-      name: '',
-      category: '',
-      price: '',
-      quantity: '',
-      expiryDate: '',
-      minThreshold: '',
-      imageUrl: ''
-    });
-    setSelectedFile(null);
-    setImagePreview(null);
-    setIsAddProductOpen(false);
-    
-    toast({
-      title: "Product Added",
-      description: "New product has been added to your inventory.",
-    });
+    try {
+      // Dispatch updateProduct with correct parameters
+      const resultAction = await dispatch(updateProduct({
+        id: editProductId!,
+        productData,
+        imageFile: selectedFile || undefined
+      }));
+
+      if (updateProduct.fulfilled.match(resultAction)) {
+        // Reset form after successful update
+        setNewProduct({
+          costPrice: "",
+          name: '',
+          category: '',
+          price: '',
+          quantity: '',
+          expiryDate: '',
+          minThreshold: '',
+          imageUrl: ''
+        });
+        setSelectedFile(null);
+        setImagePreview(null);
+        setIsAddProductOpen(false);
+        setIsEditMode(false);
+        setEditProductId(null);
+
+        toast({
+          title: "Product Updated",
+          description: "Product details have been updated successfully.",
+        });
+      } else {
+        throw new Error("Update failed");
+      }
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update product. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
+  const handleOpenDeleteDialog = (productId: number) => {
+    setIsDeleteDialogOpen(true);
+    setProductToDelete(productId);
+  };
+
+  const handleDeleteProduct = async () => {
+    if (productToDelete === null) {
+      toast({
+        title: "Error",
+        description: "No product selected for deletion.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const resultAction = await dispatch(deleteProduct(productToDelete));
+
+      if (deleteProduct.fulfilled.match(resultAction)) {
+        setIsDeleteDialogOpen(false);
+        setProductToDelete(null);
+
+        toast({
+          title: "Product Deleted",
+          description: "Product has been removed from your inventory.",
+        });
+      } else {
+        throw new Error("Delete failed");
+      }
+    } catch (error) {
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete product. It may be referenced by other records.",
+        variant: "destructive",
+      });
+    }
+  };
   const handlePrintPDF = () => {
     // Prepare document for printing
     const printWindow = window.open('', '_blank');
@@ -220,10 +362,10 @@ const ViewProduct = () => {
 
     const tableContent = document.querySelector('.products-table')?.outerHTML || '';
     const currentDate = new Date().toLocaleDateString();
-    const lowStockCount = products.filter(p => isLowStock(p.quantity, p.minThreshold)).length;
-    const expiringSoonCount = products.filter(p => isExpiringSoon(p.expiryDate)).length;
-    const totalValue = products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
-    
+    const lowStockCount = products.filter(p => isLowStock(p.quantity, p.mst)).length;
+    const expiringSoonCount = products.filter(p => isExpiringSoon(p.expiry_date)).length;
+    const totalValue = products.reduce((sum, p) => sum + (p.retail_price * p.quantity), 0);
+
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -292,18 +434,44 @@ const ViewProduct = () => {
               <h1 className="text-3xl font-bold text-foreground mb-2">Product Inventory</h1>
               <p className="text-muted-foreground">Manage your product catalog and inventory levels</p>
             </div>
-            <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
+            <Dialog open={isAddProductOpen} onOpenChange={(open) => {
+              setIsAddProductOpen(open);
+              if (!open) {
+                // Reset form and states when dialog closes
+                setIsEditMode(false);
+                setEditProductId(null);
+                setNewProduct({
+                  name: '',
+                  category: '',
+                  price: '',
+                  quantity: '',
+                  costPrice: "",
+                  expiryDate: '',
+                  minThreshold: '',
+                  imageUrl: ''
+                });
+                setSelectedFile(null);
+                setImagePreview(null);
+              }
+            }}>
               <DialogTrigger asChild>
-                <Button className="bg-primary hover:bg-primary/90 transition-all hover:scale-105">
+                <Button
+                  className="bg-primary hover:bg-primary/90 transition-all hover:scale-105"
+                  onClick={() => {
+                    // Ensure we're in add mode when clicking the add button
+                    setIsEditMode(false);
+                    setEditProductId(null);
+                  }}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Product
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
-                  <DialogTitle>Add New Product</DialogTitle>
+                  <DialogTitle>{isEditMode ? 'Edit Product' : 'Add New Product'}</DialogTitle>
                   <DialogDescription>
-                    Add a new product to your inventory catalog.
+                    {isEditMode ? 'Update the product information below.' : 'Add a new product to your inventory catalog.'}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -335,7 +503,7 @@ const ViewProduct = () => {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="price">Price *</Label>
+                      <Label htmlFor="price">Retail Price *</Label>
                       <Input
                         id="price"
                         type="number"
@@ -345,6 +513,18 @@ const ViewProduct = () => {
                       />
                     </div>
                     <div className="grid gap-2">
+                      <Label htmlFor="costPrice">Cost Price *</Label>
+                      <Input
+                        id="costPrice"
+                        type="number"
+                        value={newProduct.costPrice}
+                        onChange={(e) => setNewProduct({...newProduct, costPrice: e.target.value})}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
                       <Label htmlFor="quantity">Quantity *</Label>
                       <Input
                         id="quantity"
@@ -352,17 +532,6 @@ const ViewProduct = () => {
                         value={newProduct.quantity}
                         onChange={(e) => setNewProduct({...newProduct, quantity: e.target.value})}
                         placeholder="0"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="expiryDate">Expiry Date</Label>
-                      <Input
-                        id="expiryDate"
-                        type="date"
-                        value={newProduct.expiryDate}
-                        onChange={(e) => setNewProduct({...newProduct, expiryDate: e.target.value})}
                       />
                     </div>
                     <div className="grid gap-2">
@@ -375,6 +544,15 @@ const ViewProduct = () => {
                         placeholder="5"
                       />
                     </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="expiryDate">Expiry Date</Label>
+                    <Input
+                      id="expiryDate"
+                      type="date"
+                      value={newProduct.expiryDate}
+                      onChange={(e) => setNewProduct({...newProduct, expiryDate: e.target.value})}
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label>Product Image</Label>
@@ -442,9 +620,15 @@ const ViewProduct = () => {
                   <Button variant="outline" onClick={() => setIsAddProductOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleAddProduct}>
-                    Add Product
-                  </Button>
+                  {isEditMode ? (
+                    <Button onClick={handleUpdateProduct}>
+                      Update Product
+                    </Button>
+                  ) : (
+                    <Button onClick={handleAddProduct}>
+                      Add Product
+                    </Button>
+                  )}
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -470,7 +654,7 @@ const ViewProduct = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-destructive">
-                  {products.filter(p => isLowStock(p.quantity, p.minThreshold)).length}
+                  {products.filter(p => isLowStock(p.quantity, p.mst)).length}
                 </div>
                 <p className="text-xs text-muted-foreground">Need restocking</p>
               </CardContent>
@@ -483,7 +667,7 @@ const ViewProduct = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-500">
-                  {products.filter(p => isExpiringSoon(p.expiryDate)).length}
+                  {products.filter(p => isExpiringSoon(p.expiry_date)).length}
                 </div>
                 <p className="text-xs text-muted-foreground">Within 30 days</p>
               </CardContent>
@@ -496,7 +680,7 @@ const ViewProduct = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ${products.reduce((sum, p) => sum + (p.price * p.quantity), 0).toLocaleString()}
+                  ${products.reduce((sum, p) => sum + (p.retail_price * p.quantity), 0).toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">Inventory worth</p>
               </CardContent>
@@ -533,85 +717,123 @@ const ViewProduct = () => {
                         <TableHead className="w-[120px]">Expiry Date</TableHead>
                         <TableHead className="w-[100px]">Price</TableHead>
                         <TableHead className="w-[120px]">Status</TableHead>
+                        <TableHead className="w-[120px]">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                   <TableBody>
-                    {products.map((product) => {
-                      const lowStock = isLowStock(product.quantity, product.minThreshold);
-                      const expired = isExpired(product.expiryDate);
-                      const expiringSoon = isExpiringSoon(product.expiryDate);
-                      const stockStatus = getStockStatus(product.quantity, product.minThreshold);
-                      
-                      return (
-                        <TableRow 
-                          key={product.id}
-                          className={`bg-background text-foreground border-b border-border hover:bg-accent/50 transition-colors ${
-                            lowStock || expired ? 'bg-destructive/10 border-destructive/30' : 
-                            expiringSoon ? 'bg-orange-500/10 border-orange-500/30' : ''
-                          }`}
-                        >
-                          <TableCell>
-                            <div className="flex items-center justify-center">
-                              {product.imageUrl ? (
-                                 <img 
-                                   src={product.imageUrl} 
-                                   alt={product.name}
-                                   className="w-16 h-16 object-cover rounded"
-                                  onError={(e) => {
-                                    const target = e.currentTarget as HTMLImageElement;
-                                    const fallback = target.nextElementSibling as HTMLElement;
-                                    target.style.display = 'none';
-                                    if (fallback) fallback.style.display = 'flex';
-                                  }}
-                                />
-                              ) : (
-                                 <div className="w-16 h-16 bg-muted rounded flex items-center justify-center">
-                                   <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                                 </div>
-                              )}
-                               <div className="w-16 h-16 bg-muted rounded flex items-center justify-center" style={{display: 'none'}}>
-                                 <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-medium">{product.id}</TableCell>
-                          <TableCell className="font-medium">{product.name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={getCategoryColor(product.category)}>
-                              {product.category}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className={`font-medium ${lowStock ? 'text-destructive' : ''}`}>
-                                {product.quantity}
+                    {status === 'loading' ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="h-24 text-center">
+                          <div className="flex items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+                            <span>Loading products...</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : products.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="h-24 text-center">
+                          No products found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      products.map((product) => {
+                        const lowStock = isLowStock(product.quantity, product.mst);
+                        const expired = isExpired(product.expiry_date);
+                        const expiringSoon = isExpiringSoon(product.expiry_date);
+                        const stockStatus = getStockStatus(product.quantity, product.mst);
+
+                        return (
+                          <TableRow
+                            key={product.id}
+                            className={`bg-background text-foreground border-b border-border hover:bg-accent/50 transition-colors ${
+                              lowStock || expired ? 'bg-destructive/10 border-destructive/30' : 
+                              expiringSoon ? 'bg-orange-500/10 border-orange-500/30' : ''
+                            }`}
+                          >
+                            <TableCell>
+                              <div className="flex items-center justify-center">
+                                {product.imageUrl ? (
+                                  <img
+                                    src={product.imageUrl}
+                                    alt={product.name}
+                                    className="w-16 h-16 object-cover rounded"
+                                    onError={(e) => {
+                                      const target = e.currentTarget as HTMLImageElement;
+                                      const fallback = target.nextElementSibling as HTMLElement;
+                                      target.style.display = 'none';
+                                      if (fallback) fallback.style.display = 'flex';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-16 h-16 bg-muted rounded flex items-center justify-center">
+                                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <div className="w-16 h-16 bg-muted rounded flex items-center justify-center" style={{display: 'none'}}>
+                                  <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">#{product.id}</TableCell>
+                            <TableCell className="font-medium">{product.name}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={getCategoryColor(product.category)}>
+                                {product.category}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className={`font-medium ${lowStock ? 'text-destructive' : ''}`}>
+                                  {product.quantity}
+                                </span>
+                                {lowStock && <AlertTriangle className="h-4 w-4 text-destructive" />}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{product.mst}</TableCell>
+                            <TableCell>
+                              <span
+                                className={`px-2 py-1 rounded text-sm ${
+                                  expired
+                                    ? 'bg-destructive/20 text-destructive' 
+                                    : expiringSoon
+                                      ? 'bg-orange-500/20 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400'
+                                      : 'bg-secondary text-secondary-foreground'
+                                }`}
+                              >
+                                {formatDate(product.expiry_date)}
                               </span>
-                              {lowStock && <AlertTriangle className="h-4 w-4 text-destructive" />}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">{product.minThreshold}</TableCell>
-                          <TableCell>
-                            <span 
-                              className={`px-2 py-1 rounded text-sm ${
-                                expired
-                                  ? 'bg-destructive/20 text-destructive' 
-                                  : expiringSoon
-                                    ? 'bg-orange-500/20 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400'
-                                    : 'bg-secondary text-secondary-foreground'
-                              }`}
-                            >
-                              {product.expiryDate}
-                            </span>
-                          </TableCell>
-                          <TableCell className="font-medium">${product.price}</TableCell>
-                          <TableCell>
-                            <Badge variant={stockStatus.variant}>
-                              {stockStatus.text}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                            </TableCell>
+                            <TableCell className="font-medium">${product.retail_price.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Badge variant={stockStatus.variant}>
+                                {stockStatus.text}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditProduct(product)}
+                                className="text-muted-foreground hover:bg-accent/50 transition-colors"
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleOpenDeleteDialog(product.id)}
+                                className="bg-destructive/10 hover:bg-destructive/20"
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Delete
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -619,8 +841,25 @@ const ViewProduct = () => {
           </Card>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the product from your inventory.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProduct}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
 
 export default ViewProduct;
+
