@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -13,123 +14,39 @@ import { Badge } from '@/components/ui/badge';
 import { FileText, Package, Truck, CheckCircle, Clock, MapPin } from 'lucide-react';
 import DeliveryNavigation from '@/components/DeliveryNavigation';
 import { useToast } from '@/hooks/use-toast';
-
-// Mock data for delivery orders
-const initialOrders = [
-  {
-    id: 'ORD001',
-    orderNo: 'SMRT-2024-001',
-    retailerName: 'TechStore Downtown',
-    retailerAddress: '123 Main St, Downtown',
-    distributorName: 'TechMart Distributors',
-    productName: 'iPhone 15 Pro Max',
-    quantity: 5,
-    orderDate: '2024-01-15',
-    status: 'ready_for_pickup',
-    estimatedDelivery: '2024-01-17',
-    dispatchedAt: null,
-    deliveredAt: null
-  },
-  {
-    id: 'ORD002',
-    orderNo: 'SMRT-2024-002',
-    retailerName: 'Fashion Hub',
-    retailerAddress: '456 Style Ave, Central',
-    distributorName: 'Fashion Wholesale',
-    productName: 'Cotton Premium T-Shirt',
-    quantity: 50,
-    orderDate: '2024-01-14',
-    status: 'picked',
-    estimatedDelivery: '2024-01-16',
-    dispatchedAt: null,
-    deliveredAt: null
-  },
-  {
-    id: 'ORD003',
-    orderNo: 'SMRT-2024-003',
-    retailerName: 'MediCare Pharmacy',
-    retailerAddress: '789 Health Blvd, Eastside',
-    distributorName: 'MedSupply Inc.',
-    productName: 'Paracetamol 500mg',
-    quantity: 100,
-    orderDate: '2024-01-13',
-    status: 'dispatched',
-    estimatedDelivery: '2024-01-15',
-    dispatchedAt: '2024-01-14T10:30:00',
-    deliveredAt: null
-  },
-  {
-    id: 'ORD004',
-    orderNo: 'SMRT-2024-004',
-    retailerName: 'HealthPlus Pharmacy',
-    retailerAddress: '321 Wellness St, Northside',
-    distributorName: 'PharmaCare Distributors',
-    productName: 'Vitamin D3 Tablets',
-    quantity: 25,
-    orderDate: '2024-01-12',
-    status: 'delivered',
-    estimatedDelivery: '2024-01-14',
-    dispatchedAt: '2024-01-13T09:15:00',
-    deliveredAt: '2024-01-14T14:22:00'
-  },
-  {
-    id: 'ORD005',
-    orderNo: 'SMRT-2024-005',
-    retailerName: 'TechStore Downtown',
-    retailerAddress: '123 Main St, Downtown',
-    distributorName: 'Digital Supply Co.',
-    productName: 'Wireless Earbuds Pro',
-    quantity: 10,
-    orderDate: '2024-01-11',
-    status: 'ready_for_pickup',
-    estimatedDelivery: '2024-01-16',
-    dispatchedAt: null,
-    deliveredAt: null
-  },
-  {
-    id: 'ORD006',
-    orderNo: 'SMRT-2024-006',
-    retailerName: 'Style Central',
-    retailerAddress: '654 Fashion Row, Westside',
-    distributorName: 'Fashion Wholesale',
-    productName: 'Denim Jeans Classic',
-    quantity: 20,
-    orderDate: '2024-01-10',
-    status: 'picked',
-    estimatedDelivery: '2024-01-15',
-    dispatchedAt: null,
-    deliveredAt: null
-  }
-];
+import { fetchDeliveryOrders, updateOrderStatus } from '@/Redux/Store/deliveryOrdersSlice';
+import type { RootState, AppDispatch } from '@/Redux/Store';
 
 const ViewOrder = () => {
-  const [orders, setOrders] = useState(initialOrders);
+  const dispatch = useDispatch<AppDispatch>();
+  const { orders, loading, error, statusUpdateLoading } = useSelector((state: RootState) => state.deliveryOrders);
   const { toast } = useToast();
 
-  const handleStatusUpdate = (orderId: string, newStatus: string) => {
-    const currentTime = new Date().toISOString();
-    
-    setOrders(orders.map(order => 
-      order.id === orderId 
-        ? { 
-            ...order, 
-            status: newStatus,
-            dispatchedAt: newStatus === 'dispatched' ? currentTime : order.dispatchedAt,
-            deliveredAt: newStatus === 'delivered' ? currentTime : order.deliveredAt
-          }
-        : order
-    ));
-    
-    const statusMessages = {
-      'picked': 'Order marked as picked up from distributor',
-      'dispatched': 'Order dispatched for delivery',
-      'delivered': 'Order successfully delivered to retailer'
-    };
-    
-    toast({
-      title: "Status Updated",
-      description: statusMessages[newStatus as keyof typeof statusMessages],
-    });
+  useEffect(() => {
+    dispatch(fetchDeliveryOrders());
+  }, [dispatch]);
+
+  const handleStatusUpdate = (orderId: string | number, newStatus: string) => {
+    dispatch(updateOrderStatus({ id: orderId, status: newStatus }))
+      .unwrap()
+      .then(() => {
+        const statusMessages: Record<string, string> = {
+          'DISPATCHED': 'Order dispatched for delivery',
+          'DELIVERED': 'Order successfully delivered to retailer'
+        };
+
+        toast({
+          title: "Status Updated",
+          description: statusMessages[newStatus] || `Status updated to ${newStatus}`,
+        });
+      })
+      .catch((err) => {
+        toast({
+          title: "Error",
+          description: err || "Failed to update order status",
+          variant: "destructive"
+        });
+      });
   };
 
   const handlePrintPDF = () => {
@@ -208,9 +125,32 @@ const ViewOrder = () => {
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const readyForPickup = orders.filter(order => order.status === 'ready_for_pickup').length;
-  const inTransit = orders.filter(order => ['picked', 'dispatched'].includes(order.status)).length;
-  const delivered = orders.filter(order => order.status === 'delivered').length;
+  // Map API orders to table format - filter out PENDING orders
+  const mappedOrders = orders
+    .filter((order: any) => order.status !== 'PENDING')
+    .map((order: any) => ({
+      id: order.orderId || order.id,
+      orderNo: order.orderNumber || '-',
+      retailerName: order.retailer?.username || '-',
+      retailerAddress: order.retailer?.address || '-',
+      distributorName: order.distributor?.username || '-',
+      productName: order.product?.name || '-',
+      quantity: order.quantity ?? '-',
+      orderDate: order.request?.createdAt || '-',
+      status: order.status || '-',
+      estimatedDelivery: order.estimatedDelivery || '-',
+      dispatchedAt: order.dispatchedAt || null,
+      deliveredAt: order.deliveredAt || null,
+      // Add payment status to help with action buttons
+      isPaid: order.status !== 'PENDING'
+    }));
+
+  const readyForPickup = mappedOrders.filter(order => order.status === 'ready_for_pickup').length;
+  const inTransit = mappedOrders.filter(order => ['picked', 'dispatched'].includes(order.status)).length;
+  const delivered = mappedOrders.filter(order => order.status === 'delivered').length;
+
+  if (loading) return <div className="p-8 text-center">Loading delivery orders...</div>;
+  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/10 to-primary/10">
@@ -304,7 +244,7 @@ const ViewOrder = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders.map((order) => (
+                    {mappedOrders.map((order) => (
                       <TableRow key={order.id}>
                         <TableCell className="font-medium">{order.orderNo}</TableCell>
                         <TableCell>
@@ -336,40 +276,37 @@ const ViewOrder = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {order.status === 'ready_for_pickup' && (
+                            {order.status === 'ACCEPTED' && order.isPaid && (
                               <Button
                                 size="sm"
-                                onClick={() => handleStatusUpdate(order.id, 'picked')}
-                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
-                              >
-                                <Package className="h-3 w-3 mr-1" />
-                                Pick Up
-                              </Button>
-                            )}
-                            {order.status === 'picked' && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleStatusUpdate(order.id, 'dispatched')}
+                                onClick={() => handleStatusUpdate(order.id, 'DISPATCHED')}
                                 className="bg-orange-600 hover:bg-orange-700 text-white text-xs"
+                                disabled={statusUpdateLoading}
                               >
                                 <Truck className="h-3 w-3 mr-1" />
                                 Dispatch
                               </Button>
                             )}
-                            {order.status === 'dispatched' && (
+                            {order.status === 'DISPATCHED' && (
                               <Button
                                 size="sm"
-                                onClick={() => handleStatusUpdate(order.id, 'delivered')}
+                                onClick={() => handleStatusUpdate(order.id, 'DELIVERED')}
                                 className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                                disabled={statusUpdateLoading}
                               >
                                 <CheckCircle className="h-3 w-3 mr-1" />
                                 Deliver
                               </Button>
                             )}
-                            {order.status === 'delivered' && (
+                            {order.status === 'DELIVERED' && (
                               <span className="text-green-600 text-sm font-medium flex items-center">
                                 <CheckCircle className="h-3 w-3 mr-1" />
                                 Complete
+                              </span>
+                            )}
+                            {(order.status !== 'ACCEPTED' && order.status !== 'DISPATCHED' && order.status !== 'DELIVERED') && (
+                              <span className="text-gray-500 text-sm italic">
+                                No actions available
                               </span>
                             )}
                           </div>
@@ -388,3 +325,4 @@ const ViewOrder = () => {
 };
 
 export default ViewOrder;
+

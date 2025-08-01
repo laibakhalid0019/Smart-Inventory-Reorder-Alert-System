@@ -5,6 +5,7 @@ import requestsReducer from './requestsSlice';
 import stockReducer from './stockSlice';
 import distributorRequestsReducer from './distributorRequestsSlice';
 import productsReducer from './productsSlice';
+import deliveryOrdersReducer from './deliveryOrdersSlice';
 
 export const store = configureStore({
     reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
         stock: stockReducer,
         distributorRequests: distributorRequestsReducer,
         products: productsReducer,
+        deliveryOrders: deliveryOrdersReducer,
     },
 });
 
