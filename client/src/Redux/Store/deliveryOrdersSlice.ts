@@ -21,10 +21,22 @@ export const updateOrderStatus = createAsyncThunk(
   'deliveryOrders/updateOrderStatus',
   async ({ id, status }: { id: number | string, status: string }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`http://localhost:3000/delivery/order/change-order-status/${id}?status=${status}`);
-      return { id, status, message: response.data };
-    } catch (err) {
-      return rejectWithValue(err.response?.data || 'Failed to update order status');
+      // Ensure status is uppercase to match backend enum parsing
+      const statusUpper = status.toUpperCase();
+
+      // Add withCredentials for proper authentication
+      const response = await axios.post(
+        `http://localhost:3000/delivery/order/change-order-status/${id}?status=${statusUpper}`,
+        null,
+        { withCredentials: true }
+      );
+
+      return { id, status: statusUpper, message: response.data };
+    } catch (err: any) {
+      // Get the specific error message from the response for better user feedback
+      const errorMessage = err.response?.data || 'Failed to update order status';
+      console.error("Status update error:", err);
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -66,10 +78,13 @@ const deliveryOrdersSlice = createSlice({
         );
         if (orderIndex !== -1) {
           state.orders[orderIndex].status = status;
+          // Only update timestamps for specific status changes
+          // Let the backend handle the actual timestamp creation
           if (status === 'DISPATCHED') {
             state.orders[orderIndex].dispatchedAt = new Date().toISOString();
           } else if (status === 'DELIVERED') {
             state.orders[orderIndex].deliveredAt = new Date().toISOString();
+            // Once delivered, we shouldn't allow further status changes
           }
         }
       })

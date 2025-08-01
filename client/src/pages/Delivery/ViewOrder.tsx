@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,29 +21,40 @@ const ViewOrder = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { orders, loading, error, statusUpdateLoading } = useSelector((state: RootState) => state.deliveryOrders);
   const { toast } = useToast();
+  // Add a state to track when orders should be refreshed
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // Update the useEffect to depend on refreshTrigger
   useEffect(() => {
     dispatch(fetchDeliveryOrders());
-  }, [dispatch]);
+  }, [dispatch, refreshTrigger]);
 
   const handleStatusUpdate = (orderId: string | number, newStatus: string) => {
+    console.log(`Updating order ${orderId} to status: ${newStatus}`);
+
     dispatch(updateOrderStatus({ id: orderId, status: newStatus }))
       .unwrap()
-      .then(() => {
+      .then((result) => {
+        console.log("Status update success:", result);
+
         const statusMessages: Record<string, string> = {
           'DISPATCHED': 'Order dispatched for delivery',
-          'DELIVERED': 'Order successfully delivered to retailer'
+          'DELIVERED': 'Order successfully delivered to retailer and stock updated'
         };
 
         toast({
           title: "Status Updated",
           description: statusMessages[newStatus] || `Status updated to ${newStatus}`,
         });
+
+        // Explicitly force a refresh of the orders after status update
+        setRefreshTrigger(prev => prev + 1);
       })
       .catch((err) => {
+        console.error("Status update error in component:", err);
         toast({
           title: "Error",
-          description: err || "Failed to update order status",
+          description: typeof err === 'string' ? err : "Failed to update order status. Please try again.",
           variant: "destructive"
         });
       });
@@ -125,9 +136,8 @@ const ViewOrder = () => {
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  // Map API orders to table format - filter out PENDING orders
+  // Map API orders to table format - show all orders and handle correct status formats
   const mappedOrders = orders
-    .filter((order: any) => order.status !== 'PENDING')
     .map((order: any) => ({
       id: order.orderId || order.id,
       orderNo: order.orderNumber || '-',
@@ -141,13 +151,20 @@ const ViewOrder = () => {
       estimatedDelivery: order.estimatedDelivery || '-',
       dispatchedAt: order.dispatchedAt || null,
       deliveredAt: order.deliveredAt || null,
-      // Add payment status to help with action buttons
-      isPaid: order.status !== 'PENDING'
     }));
 
-  const readyForPickup = mappedOrders.filter(order => order.status === 'ready_for_pickup').length;
-  const inTransit = mappedOrders.filter(order => ['picked', 'dispatched'].includes(order.status)).length;
-  const delivered = mappedOrders.filter(order => order.status === 'delivered').length;
+  // For stats cards
+  const readyForPickup = mappedOrders.filter(order =>
+    order.status.toUpperCase() === 'PAID'
+  ).length;
+
+  const inTransit = mappedOrders.filter(order =>
+    order.status.toUpperCase() === 'DISPATCHED'
+  ).length;
+
+  const delivered = mappedOrders.filter(order =>
+    order.status.toUpperCase() === 'DELIVERED'
+  ).length;
 
   if (loading) return <div className="p-8 text-center">Loading delivery orders...</div>;
   if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
@@ -276,7 +293,7 @@ const ViewOrder = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {order.status === 'ACCEPTED' && order.isPaid && (
+                            {(order.status.toUpperCase() === 'PAID') && (
                               <Button
                                 size="sm"
                                 onClick={() => handleStatusUpdate(order.id, 'DISPATCHED')}
@@ -287,7 +304,7 @@ const ViewOrder = () => {
                                 Dispatch
                               </Button>
                             )}
-                            {order.status === 'DISPATCHED' && (
+                            {order.status.toUpperCase() === 'DISPATCHED' && (
                               <Button
                                 size="sm"
                                 onClick={() => handleStatusUpdate(order.id, 'DELIVERED')}
@@ -298,13 +315,16 @@ const ViewOrder = () => {
                                 Deliver
                               </Button>
                             )}
-                            {order.status === 'DELIVERED' && (
+                            {order.status.toUpperCase() === 'DELIVERED' && (
                               <span className="text-green-600 text-sm font-medium flex items-center">
                                 <CheckCircle className="h-3 w-3 mr-1" />
                                 Complete
                               </span>
                             )}
-                            {(order.status !== 'ACCEPTED' && order.status !== 'DISPATCHED' && order.status !== 'DELIVERED') && (
+                            {(
+                              order.status.toUpperCase() !== 'PAID' &&
+                              order.status.toUpperCase() !== 'DISPATCHED' &&
+                              order.status.toUpperCase() !== 'DELIVERED') && (
                               <span className="text-gray-500 text-sm italic">
                                 No actions available
                               </span>
@@ -325,4 +345,3 @@ const ViewOrder = () => {
 };
 
 export default ViewOrder;
-

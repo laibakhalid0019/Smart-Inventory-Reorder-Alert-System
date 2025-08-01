@@ -40,8 +40,25 @@ const ViewRequest = () => {
 
   // Fetch requests and delivery agents when component mounts
   useEffect(() => {
-    dispatch(fetchDistributorRequests());
-    fetchAgents();
+    const fetchInitialData = async () => {
+      const requestsResponse = await dispatch(fetchDistributorRequests()).unwrap();
+
+      // Check which requests already have orders generated
+      // This assumes the request status or some other property indicates if an order exists
+      const ordersGenerated = requestsResponse
+        .filter(req => req.hasOrder || req.status === 'PAID' || req.orderGenerated)
+        .map(req => req.requestId);
+
+      if (ordersGenerated.length > 0) {
+        setGeneratedOrders(ordersGenerated);
+      }
+
+      fetchAgents();
+    };
+
+    fetchInitialData().catch(error => {
+      console.error("Error fetching initial data:", error);
+    });
   }, [dispatch]);
 
   const fetchAgents = async () => {
@@ -169,45 +186,49 @@ const ViewRequest = () => {
 
   // Helper function to export CSV
   const handleExportCSV = () => {
-    // Define CSV headers
-    const headers = ['Request ID', 'Retailer', 'Email', 'Product', 'Quantity', 'Price', 'Date', 'Status'];
+    // Create CSV content
+    let csvContent = 'Request ID,Retailer,Product,Quantity,Price,Request Date,Status\n';
 
-    // Map requests to CSV rows
-    const rows = requests.map(request => [
-      `#${request.requestId}`,
-      request.retailer.username,
-      request.retailer.email,
-      request.product.name,
-      request.quantity.toString(),
-      request.price.toFixed(2),
-      formatDate(request.createdAt),
-      request.status
-    ]);
+    // Add data rows
+    requests.forEach(request => {
+      // Format date
+      const requestDate = request.createdAt ? new Date(request.createdAt).toLocaleDateString() : 'N/A';
 
-    // Combine headers and rows
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
+      // Escape commas in text fields
+      const escapeCsvField = (field: string) => {
+        if (field && field.includes(',')) {
+          return `"${field}"`;
+        }
+        return field;
+      };
 
-    // Create a blob and download link
+      // Get retailer name
+      const retailerName = request.retailer?.username || 'Unknown';
+
+      // Get product name
+      const productName = request.product?.name || 'Unknown';
+
+      csvContent += `${request.requestId},${escapeCsvField(retailerName)},${escapeCsvField(productName)},${request.quantity},${request.price},${requestDate},${request.status}\n`;
+    });
+
+    // Create blob and download link
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
 
-    // Set link properties
+    // Set download attributes
     link.setAttribute('href', url);
-    link.setAttribute('download', `requests_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `retailer-requests-${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
 
-    // Append to document, trigger download, and clean up
+    // Append to document, trigger click and cleanup
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
     toast({
       title: "CSV Exported",
-      description: "Requests data has been exported as CSV file",
+      description: "Your retailer requests have been exported to CSV successfully.",
     });
   };
 

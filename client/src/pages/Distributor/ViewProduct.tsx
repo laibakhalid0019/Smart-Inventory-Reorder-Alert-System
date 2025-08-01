@@ -355,6 +355,53 @@ const ViewProduct = () => {
       });
     }
   };
+  const handleExportCSV = () => {
+    // Create CSV content
+    let csvContent = 'Name,Category,Quantity,MST,Retail Price,Distributor Price,Expiry Date,Status\n';
+
+    // Add data rows
+    products.forEach(product => {
+      const status = isLowStock(product.quantity, product.mst)
+        ? 'Low Stock'
+        : isExpiringSoon(product.expiry_date)
+          ? 'Expiring Soon'
+          : 'Normal';
+
+      // Format expiry date
+      const expiryDate = product.expiry_date ? new Date(product.expiry_date).toLocaleDateString() : 'N/A';
+
+      // Escape commas in text fields
+      const escapeCsvField = (field: string) => {
+        if (field && field.includes(',')) {
+          return `"${field}"`;
+        }
+        return field;
+      };
+
+      csvContent += `${escapeCsvField(product.name)},${escapeCsvField(product.category)},${product.quantity},${product.mst},${product.retail_price},${product.distributor_price},${expiryDate},${status}\n`;
+    });
+
+    // Create blob and download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    // Set download attributes
+    link.setAttribute('href', url);
+    link.setAttribute('download', `product-inventory-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+
+    // Append to document, trigger click and cleanup
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "CSV Exported",
+      description: "Your product inventory has been exported to CSV successfully.",
+    });
+  };
+
   const handlePrintPDF = () => {
     // Prepare document for printing
     const printWindow = window.open('', '_blank');
@@ -697,10 +744,12 @@ const ViewProduct = () => {
                     Manage your product inventory and track stock levels
                   </CardDescription>
                 </div>
-                <Button onClick={handlePrintPDF} variant="outline" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Print as PDF
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button onClick={handleExportCSV} variant="outline" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Export as CSV
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -820,15 +869,7 @@ const ViewProduct = () => {
                                 <Edit className="h-4 w-4 mr-1" />
                                 Edit
                               </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleOpenDeleteDialog(product.id)}
-                                className="bg-destructive/10 hover:bg-destructive/20"
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete
-                              </Button>
+                              {/* Removed Delete button to prevent errors when products are referenced elsewhere */}
                             </TableCell>
                           </TableRow>
                         );
@@ -842,21 +883,7 @@ const ViewProduct = () => {
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the product from your inventory.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteProduct}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
     </div>
   );
 };

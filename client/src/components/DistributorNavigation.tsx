@@ -12,15 +12,38 @@ import {
 import { Package, FileText, User, LogOut, Mail, UserCircle, Menu, BarChart3, ShoppingCart } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '@/Redux/Store';
+import axios from 'axios';
 
 const DistributorNavigation = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { user, logout } = useUser();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  // Get user info from Redux auth state
+  const { username, role, isAuthenticated } = useSelector((state: RootState) => state.auth);
+
+  const handleLogout = async () => {
+    try {
+      // Call logout API endpoint
+      await axios.post('http://localhost:3000/auth/logout', {}, { withCredentials: true });
+
+      // Use the context logout to clear local state
+      logout();
+
+      // Navigate to home page
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  // Get initials from username
+  const getInitials = (name: string | null) => {
+    if (!name) return 'U';
+    return name.charAt(0).toUpperCase();
   };
 
   return (
@@ -65,10 +88,10 @@ const DistributorNavigation = () => {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
                     {user?.profilePicture && (
-                      <AvatarImage src={user.profilePicture} alt={user.name} />
+                      <AvatarImage src={user.profilePicture} alt={username || 'User'} />
                     )}
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      {user?.initials || 'U'}
+                      {getInitials(username)}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -77,11 +100,11 @@ const DistributorNavigation = () => {
                 <div className="flex flex-col space-y-1 p-2">
                   <div className="flex items-center space-x-2">
                     <UserCircle className="h-4 w-4" />
-                    <span className="text-sm font-medium">{user?.name || 'User'}</span>
+                    <span className="text-sm font-medium">{username || 'User'}</span>
                   </div>
                   <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                     <User className="h-3 w-3" />
-                    <span className="capitalize">{user?.role || 'Distributor'}</span>
+                    <span className="capitalize">{role || 'Distributor'}</span>
                   </div>
                   <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                     <Mail className="h-3 w-3" />
@@ -105,10 +128,10 @@ const DistributorNavigation = () => {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
                     {user?.profilePicture && (
-                      <AvatarImage src={user.profilePicture} alt={user.name} />
+                      <AvatarImage src={user.profilePicture} alt={username || 'User'} />
                     )}
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      {user?.initials || 'U'}
+                      {getInitials(username)}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -117,11 +140,11 @@ const DistributorNavigation = () => {
                 <div className="flex flex-col space-y-1 p-2">
                   <div className="flex items-center space-x-2">
                     <UserCircle className="h-4 w-4" />
-                    <span className="text-sm font-medium">{user?.name || 'User'}</span>
+                    <span className="text-sm font-medium">{username || 'User'}</span>
                   </div>
                   <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                     <User className="h-3 w-3" />
-                    <span className="capitalize">{user?.role || 'Distributor'}</span>
+                    <span className="capitalize">{role || 'Distributor'}</span>
                   </div>
                   <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                     <Mail className="h-3 w-3" />

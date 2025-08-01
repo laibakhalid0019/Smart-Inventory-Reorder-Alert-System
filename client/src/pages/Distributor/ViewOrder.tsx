@@ -48,6 +48,53 @@ const DistributorViewOrder = () => {
     });
   };
 
+  const handleExportCSV = () => {
+    // Create CSV content
+    let csvContent = 'Order ID,Retailer,Order Date,Product,Quantity,Price,Status\n';
+
+    // Add data rows
+    distributorOrders.forEach(order => {
+      // Format date
+      const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A';
+
+      // Escape commas in text fields
+      const escapeCsvField = (field: string) => {
+        if (field && field.includes(',')) {
+          return `"${field}"`;
+        }
+        return field;
+      };
+
+      // Get retailer name
+      const retailerName = order.retailer?.username || 'Unknown';
+
+      // Get product name (from request object if needed)
+      const productName = order.product?.name || (order.request?.product?.name) || 'Unknown';
+
+      csvContent += `${order.id},${escapeCsvField(retailerName)},${orderDate},${escapeCsvField(productName)},${order.quantity || order.request?.quantity || 0},${order.price || order.request?.price || 0},${order.status}\n`;
+    });
+
+    // Create blob and download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    // Set download attributes
+    link.setAttribute('href', url);
+    link.setAttribute('download', `orders-report-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+
+    // Append to document, trigger click and cleanup
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "CSV Exported",
+      description: "Your orders report has been exported to CSV successfully.",
+    });
+  };
+
   const handlePrintPDF = () => {
     // Prepare document for printing
     const printWindow = window.open('', '_blank');
@@ -199,10 +246,12 @@ const DistributorViewOrder = () => {
                     Monitor the status of all your orders and deliveries
                   </CardDescription>
                 </div>
-                <Button onClick={handlePrintPDF} variant="outline" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Print as PDF
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={handleExportCSV} variant="outline" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Export as CSV
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -320,4 +369,3 @@ const DistributorViewOrder = () => {
 };
 
 export default DistributorViewOrder;
-
