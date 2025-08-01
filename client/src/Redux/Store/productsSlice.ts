@@ -42,10 +42,12 @@ export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
   async (_, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('token');
+      // Make the request with credentials so the session cookies are sent
+      // The backend should identify the user from the session
       const response = await axios.get('http://localhost:3000/distributor/product/view-products', {
-          withCredentials:true
+        withCredentials: true
       });
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {

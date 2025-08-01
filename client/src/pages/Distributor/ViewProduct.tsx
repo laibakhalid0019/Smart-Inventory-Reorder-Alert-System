@@ -52,6 +52,7 @@ const ViewProduct = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { products, status, error } = useSelector((state: RootState) => state.products);
 
+  const [isLoading, setIsLoading] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -152,27 +153,28 @@ const ViewProduct = () => {
       return;
     }
 
-    // Format expiry date to LocalDateTime format (YYYY-MM-DDTHH:mm:ss)
-    let formattedExpiryDate = null;
-    if (newProduct.expiryDate) {
-      formattedExpiryDate = `${newProduct.expiryDate}T00:00:00`;
-    }
-
-    // Prepare product data for API
-    const productData = {
-      name: newProduct.name,
-      category: newProduct.category,
-      retail_price: parseFloat(newProduct.price),
-      cost_price: parseFloat(newProduct.costPrice),
-      quantity: parseInt(newProduct.quantity),
-      expiry_date: formattedExpiryDate,
-      mst: parseInt(newProduct.minThreshold) || 5,
-      imageUrl: newProduct.imageUrl,
-      sku: null,
-      barcode: `${Date.now()}` // Generate a simple barcode for now
-    };
-
+    setIsLoading(true);
     try {
+      // Format expiry date to LocalDateTime format (YYYY-MM-DDTHH:mm:ss)
+      let formattedExpiryDate = null;
+      if (newProduct.expiryDate) {
+        formattedExpiryDate = `${newProduct.expiryDate}T00:00:00`;
+      }
+
+      // Prepare product data for API
+      const productData = {
+        name: newProduct.name,
+        category: newProduct.category,
+        retail_price: parseFloat(newProduct.price),
+        cost_price: parseFloat(newProduct.costPrice),
+        quantity: parseInt(newProduct.quantity),
+        expiry_date: formattedExpiryDate,
+        mst: parseInt(newProduct.minThreshold) || 5,
+        imageUrl: newProduct.imageUrl,
+        sku: null,
+        barcode: `${Date.now()}` // Generate a simple barcode for now
+      };
+
       const resultAction = await dispatch(addProduct({
         ...productData,
         imageFile: selectedFile || undefined
@@ -198,15 +200,15 @@ const ViewProduct = () => {
           title: "Product Added",
           description: "New product has been added to your inventory.",
         });
-      } else {
-        throw new Error("Add failed");
       }
     } catch (error) {
       toast({
-        title: "Add Failed",
+        title: "Error",
         description: "Failed to add product. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -672,8 +674,18 @@ const ViewProduct = () => {
                       Update Product
                     </Button>
                   ) : (
-                    <Button onClick={handleAddProduct}>
-                      Add Product
+                    <Button onClick={handleAddProduct} disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Product
+                        </>
+                      )}
                     </Button>
                   )}
                 </DialogFooter>
@@ -764,7 +776,8 @@ const ViewProduct = () => {
                         <TableHead className="w-[100px]">Quantity</TableHead>
                         <TableHead className="w-[120px]">Min Threshold</TableHead>
                         <TableHead className="w-[120px]">Expiry Date</TableHead>
-                        <TableHead className="w-[100px]">Price</TableHead>
+                        <TableHead className="w-[100px]">Retail Price</TableHead>
+                        <TableHead className="w-[100px]">Cost Price</TableHead>
                         <TableHead className="w-[120px]">Status</TableHead>
                         <TableHead className="w-[120px]">Actions</TableHead>
                       </TableRow>
@@ -854,6 +867,7 @@ const ViewProduct = () => {
                               </span>
                             </TableCell>
                             <TableCell className="font-medium">${product.retail_price.toLocaleString()}</TableCell>
+                            <TableCell className="font-medium">${product.cost_price.toLocaleString()}</TableCell>
                             <TableCell>
                               <Badge variant={stockStatus.variant}>
                                 {stockStatus.text}

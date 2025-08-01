@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Package, ShoppingCart, Send } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Package, ShoppingCart, Send, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
+import RetailerNavigation from '@/components/RetailerNavigation';
 
 interface Distributor {
   id: number;
@@ -69,12 +71,29 @@ const RestockProduct = () => {
   const [apiProducts, setApiProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>(product?.category || '');
+
+  const categories = [
+    'Electronics',
+    'Clothes',
+    'Medicine',
+    'Food',
+    'Books',
+    'Other'
+  ];
 
   useEffect(() => {
     if (product?.category) {
+      setSelectedCategory(product.category);
       fetchProductsByCategory(product.category);
     }
   }, [product]);
+
+  useEffect(() => {
+    if (selectedCategory) {
+      fetchProductsByCategory(selectedCategory);
+    }
+  }, [selectedCategory]);
 
   const fetchProductsByCategory = async (category: string) => {
     try {
@@ -103,10 +122,6 @@ const RestockProduct = () => {
     }
   };
 
-  if (!product) {
-    navigate('/retailer/stock/display');
-    return null;
-  }
 
   const availableProducts: ProductDisplay[] = apiProducts.map((p) => ({
     distributor: {
@@ -181,6 +196,7 @@ const RestockProduct = () => {
 
   return (
       <div className="min-h-screen bg-gradient-to-br from-background via-accent/10 to-primary/10">
+        <RetailerNavigation />
         <div className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -189,7 +205,9 @@ const RestockProduct = () => {
                 Back
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">Restock {product.name}</h1>
+                <h1 className="text-2xl font-bold">
+                  {product ? `Restock ${product.name}` : 'Browse Products'}
+                </h1>
                 <p className="text-sm text-muted-foreground">
                   {view === 'products'
                       ? 'Select from available distributors'
@@ -202,15 +220,68 @@ const RestockProduct = () => {
 
         <div className="pt-8 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           {view === 'products' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-                {availableProducts.map((item, idx) => (
+            <>
+              <div className="mb-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Filter Products</CardTitle>
+                    <CardDescription>Select a category to view available products</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col sm:flex-row gap-4 items-end">
+                      <div className="w-full sm:w-72">
+                        <Label htmlFor="category" className="mb-2 block">Category</Label>
+                        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map(category => (
+                              <SelectItem key={category} value={category}>{category}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                </div>
+              ) : error ? (
+                <Card className="bg-destructive/10 border-destructive/20">
+                  <CardHeader>
+                    <CardTitle>Error</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>{error}</p>
+                    <Button className="mt-4" onClick={() => selectedCategory && fetchProductsByCategory(selectedCategory)}>
+                      Try Again
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : apiProducts.length === 0 ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>No Products Found</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>No products are available in the selected category. Try selecting a different category.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+                  {availableProducts.map((item, idx) => (
                     <Card
-                        key={item.distributor.id + '-' + idx}
-                        className="cursor-pointer hover-scale transition-all duration-300 hover:shadow-lg"
-                        onClick={() => handleProductSelect(item)}
+                      key={item.distributor.id + '-' + idx}
+                      className="cursor-pointer hover:scale-[1.02] transition-all duration-300 hover:shadow-lg"
+                      onClick={() => handleProductSelect(item)}
                     >
                       <CardHeader>
-                        <img src={item.productDetails.image} className="rounded-lg mb-2 object-cover w-full h-40" />
+                        <img src={item.productDetails.image} className="rounded-lg mb-2 object-cover w-full h-40" alt={item.productName} />
                         <CardTitle>{item.productName}</CardTitle>
                         <CardDescription>{item.productDetails.description}</CardDescription>
                       </CardHeader>
@@ -224,15 +295,17 @@ const RestockProduct = () => {
                         </div>
                       </CardContent>
                     </Card>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           {view === 'details' && selectedProduct && (
               <div className="grid lg:grid-cols-2 gap-8 animate-fade-in">
                 <Card>
                   <CardHeader>
-                    <CardTitle>{product.name}</CardTitle>
+                    <CardTitle>{selectedProduct.productName}</CardTitle>
                     <CardDescription>
                       From {selectedProduct.distributor.name}
                     </CardDescription>
@@ -241,6 +314,7 @@ const RestockProduct = () => {
                     <img
                         src={selectedProduct.productDetails.image}
                         className="rounded-lg object-cover w-full h-48"
+                        alt={selectedProduct.productName}
                     />
                     <p>{selectedProduct.productDetails.description}</p>
                     <div className="text-sm">Warranty: {selectedProduct.productDetails.warranty}</div>
