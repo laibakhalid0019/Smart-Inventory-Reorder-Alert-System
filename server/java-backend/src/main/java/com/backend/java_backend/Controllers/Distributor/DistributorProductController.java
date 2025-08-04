@@ -155,7 +155,7 @@ public class DistributorProductController {
     public ResponseEntity<?> updateProductWithImage(
             @PathVariable Long id,
             @RequestPart("product") String productJson,
-            @RequestPart("file") MultipartFile file
+            @RequestPart(name = "file", required = false) MultipartFile file
     ) throws IOException {
         System.out.println("Attempting to update product with ID: " + id);
 
@@ -167,10 +167,7 @@ public class DistributorProductController {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         System.out.println("Authenticated distributor: " + username);
 
-
-        String imageUrl = null;
-
-        // Upload image if provided
+        // Upload image only if provided
         if (file != null && !file.isEmpty()) {
             // Validate file type - Accept common image formats
             String contentType = file.getContentType();
@@ -182,15 +179,19 @@ public class DistributorProductController {
             }
 
             // Upload to Cloudinary
-            imageUrl = cloudinaryService.uploadFile(file);
+            String imageUrl = cloudinaryService.uploadFile(file);
             if (imageUrl.equals("error")) {
                 System.out.println("Cloudinary upload failed.");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Image upload failed");
             }
+
+            // Only set the image URL if a new image was uploaded
+            productDTO.setImageUrl(imageUrl);
         }
 
+
+
         // Update the product
-        productDTO.setImageurl(imageUrl);
         Product updatedProduct = productService.updateProduct(id, productDTO, username);
 
         if (updatedProduct == null) {

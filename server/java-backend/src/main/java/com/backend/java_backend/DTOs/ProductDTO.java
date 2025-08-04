@@ -1,6 +1,7 @@
 package com.backend.java_backend.DTOs;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import org.springframework.cglib.core.Local;
 
@@ -25,4 +26,10 @@ public class ProductDTO {
     private Long distributorId;
 
     private LocalDateTime createdAt;
+
+    // Add setter for imageUrl to handle both camel case and lowercase variants
+    @JsonProperty("imageUrl")
+    public void setImageUrl(String imageUrl) {
+        this.imageurl = imageUrl;
+    }
 }

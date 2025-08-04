@@ -72,6 +72,7 @@ public class StockService {
     }
 
 
+    @Transactional
     public void updateRetailerStockFromOrder(Long orderId) {
         Order order = orderRepo.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found."));
@@ -95,10 +96,25 @@ public class StockService {
                     return newStock;
                 });
 
+        // Update retailer stock
+        int previousQuantity = stock.getQuantity();
         stock.setQuantity(stock.getQuantity() + quantityToAdd);
         stock.setCreatedAt(LocalDateTime.now());
         stock.setMin_threshold(product.getMst());
+        stock.setExpiry_date(product.getExpiry_date());
         stockRepo.save(stock);
+
+        // Update distributor's product inventory - decrease by the amount added to retailer stock
+        int quantity = product.getQuantity() - quantityToAdd;
+        if(quantity < 0){
+            product.setQuantity(0);
+            productRepo.save(product);
+        }
+        else {
+            product.setQuantity(product.getQuantity() - quantityToAdd);
+            productRepo.save(product);
+        }
+
     }
 
     public Stock findById(Long id) {

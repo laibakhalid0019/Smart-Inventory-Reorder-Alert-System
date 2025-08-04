@@ -115,6 +115,7 @@ public class OrderService {
         // Set timestamps if needed
         if (newStatus == Order.Status.DISPATCHED) {
             order.setDispatchedAt(new Timestamp(System.currentTimeMillis()));
+            order.setStatus(newStatus);
         } else if (newStatus == Order.Status.DELIVERED) {
             // Use a simpler timestamp format without timezone information
             order.setDeliveredAt(Timestamp.from(Instant.now()));

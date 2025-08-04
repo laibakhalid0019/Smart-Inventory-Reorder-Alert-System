@@ -3,6 +3,7 @@ package com.backend.java_backend.Controllers.Distributor;
 import com.backend.java_backend.Classes.Order;
 import com.backend.java_backend.Classes.User;
 import com.backend.java_backend.DTOs.DeliveryAgentDTO;
+import com.backend.java_backend.Repos.UserRepo;
 import com.backend.java_backend.Services.CustomUserDetailsService;
 import com.backend.java_backend.Services.OrderService;
 import org.jetbrains.annotations.NotNull;
@@ -23,7 +24,8 @@ public class DistributorOrderController {
 
     @Autowired
     private CustomUserDetailsService userDetailsService;
-
+    @Autowired
+    private UserRepo userRepo;
 
 
     @PostMapping("/generate-order/{id}")
@@ -37,6 +39,15 @@ public class DistributorOrderController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Order not generated");
         }
         return ResponseEntity.status(HttpStatus.OK).body(order);
+    }
+
+    @GetMapping("/get-agents")
+    public ResponseEntity<?>getAgents() {
+        List<User> agents = userRepo.findAllByRole(User.Role.DELIVERY);
+        if(agents.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No agents found");
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(agents);
     }
 
     @GetMapping("/view-orders")
