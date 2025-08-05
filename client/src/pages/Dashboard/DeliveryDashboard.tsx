@@ -1,17 +1,22 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Truck, MapPin, Clock, CheckCircle, BarChart3, Route, Loader2 } from 'lucide-react';
+import { Truck, MapPin, Clock, CheckCircle, BarChart3, Route, Loader2, Sparkles } from 'lucide-react';
 import DeliveryNavigation from '@/components/DeliveryNavigation';
 import DeliveryDashboardCharts from '@/components/dashboard/DeliveryDashboardCharts';
 import { RootState, AppDispatch } from '@/Redux/Store';
 import { fetchDeliveryOrders } from '@/Redux/Store/deliveryOrdersSlice';
 import { useToast } from '@/hooks/use-toast';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { getGeminiInsights } from '@/lib/geminiApi';
 
 const DeliveryDashboard = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { toast } = useToast();
+  const [aiInsights, setAiInsights] = useState<string | null>(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
 
   // Get delivery orders data from Redux
   const { orders = [], loading = false, error = null } = useSelector((state: RootState) => state.deliveryOrders ?? { orders: [], loading: false, error: null });
@@ -28,6 +33,37 @@ const DeliveryDashboard = () => {
         });
       });
   }, [dispatch, toast]);
+
+  // Fetch AI insights when data is loaded
+  useEffect(() => {
+    const shouldFetchInsights = !loadingInsights && !loading && orders.length > 0 && !aiInsights;
+
+    if (shouldFetchInsights) {
+      setLoadingInsights(true);
+
+      const fetchInsights = async () => {
+        try {
+          console.log("Fetching Gemini insights for delivery dashboard...");
+          const result = await getGeminiInsights('delivery');
+          if (result.success) {
+            console.log("Successfully received delivery insights");
+            setAiInsights(result.insights);
+          } else {
+            console.error("Failed to get delivery AI insights:", result.error);
+            setAiInsights("Unable to generate delivery insights at this time.");
+          }
+        } catch (error) {
+          console.error("Error fetching delivery AI insights:", error);
+          setAiInsights("An error occurred while generating delivery insights.");
+        } finally {
+          setLoadingInsights(false);
+        }
+      };
+
+      fetchInsights();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, orders.length]);
 
   // Calculate metrics from the orders data
   const totalOrders = Array.isArray(orders) ? orders.length : 0;
@@ -97,9 +133,42 @@ const DeliveryDashboard = () => {
             <h1 className="text-3xl font-bold text-foreground mb-2">Delivery Agent Dashboard</h1>
             <p className="text-muted-foreground">Manage your deliveries and track your performance.</p>
           </div>
+          {/* AI Insights */}
+          <div className="mt-8">
+            <Card className="feature-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  AI Insights
+                </CardTitle>
+                <CardDescription>
+                  Powered by Gemini AI
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingInsights ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="animate-spin h-5 w-5 text-primary mr-2" />
+                      <span className="text-sm text-muted-foreground">Generating insights...</span>
+                    </div>
+                ) : aiInsights ? (
+                    <div className="prose prose-sm sm:prose-base text-muted-foreground">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {aiInsights}
+                      </ReactMarkdown>
+                    </div>
+                ) : (
+                    <div className="p-3 rounded-lg bg-accent/20 border border-accent/30">
+                      <p className="text-sm font-medium">No insights available</p>
+                      <p className="text-xs text-muted-foreground">Try completing more deliveries</p>
+                    </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 mt-8">
             <Card className="feature-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Today's Deliveries</CardTitle>
@@ -153,7 +222,7 @@ const DeliveryDashboard = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <Card className="feature-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -219,6 +288,8 @@ const DeliveryDashboard = () => {
               </CardContent>
             </Card>
           </div>
+
+
         </div>
       </div>
     </div>
@@ -226,3 +297,4 @@ const DeliveryDashboard = () => {
 };
 
 export default DeliveryDashboard;
+

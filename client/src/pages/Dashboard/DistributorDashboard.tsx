@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Package,
   Truck,
@@ -15,7 +17,8 @@ import {
   CheckCircle,
   Calendar,
   FileText,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import DistributorNavigation from '@/components/DistributorNavigation';
 import DistributorDashboardCharts from '@/components/dashboard/DistributorDashboardCharts';
@@ -24,10 +27,13 @@ import { fetchProducts } from '@/Redux/Store/productsSlice';
 import { fetchDistributorOrders } from '@/Redux/Store/ordersSlice';
 import { fetchDistributorRequests } from '@/Redux/Store/distributorRequestsSlice';
 import { useToast } from '@/hooks/use-toast';
+import { getGeminiInsights } from '@/lib/geminiApi';
 
 const DistributorDashboard = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { toast } = useToast();
+  const [aiInsights, setAiInsights] = useState<string | null>(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
 
   // Get data from Redux slices with safe defaults
   const { products = [], status: productsStatus } = useSelector((state: RootState) => state.products ?? { products: [], status: 'idle' });
@@ -55,6 +61,47 @@ const DistributorDashboard = () => {
     fetchData();
   }, [dispatch, toast]);
 
+  // Get AI insights when data is loaded
+  useEffect(() => {
+    // Only fetch insights when data is fully loaded and not already loading insights
+    const shouldFetchInsights =
+      !loadingInsights &&
+      productsStatus !== 'loading' &&
+      distributorOrdersStatus !== 'loading' &&
+      requestsStatus !== 'loading' &&
+      products.length > 0 &&
+      !aiInsights; // Only fetch if we don't already have insights
+
+    if (shouldFetchInsights) {
+      // Force the AI insights section to display immediately with a loading state
+      setLoadingInsights(true);
+
+      const getInsights = async () => {
+        try {
+          console.log("Fetching Gemini insights...");
+          const result = await getGeminiInsights('distributor');
+          if (result.success) {
+            console.log("Successfully received insights");
+            setAiInsights(result.insights);
+          } else {
+            console.error("Failed to get AI insights:", result.error);
+            // Set a fallback message if API fails
+            setAiInsights("Unable to generate insights. Please check your API key configuration.");
+          }
+        } catch (error) {
+          console.error("Error fetching AI insights:", error);
+          setAiInsights("An error occurred while generating insights.");
+        } finally {
+          setLoadingInsights(false);
+        }
+      };
+      
+      getInsights();
+    }
+  // Use a stable dependency array to prevent flickering
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productsStatus, distributorOrdersStatus, requestsStatus]);
+
   // Loading state check before calculations
   const isLoading = productsStatus === 'loading' || distributorOrdersStatus === 'loading' || requestsStatus === 'loading';
 
@@ -74,53 +121,96 @@ const DistributorDashboard = () => {
 
   // Calculate metrics from real data with safe defaults
   const totalProducts = Array.isArray(products) ? products.length : 0;
-  const lowStockProducts = Array.isArray(products) ? products.filter(p => p?.quantity <= p?.mst).length : 0;
-  const expiringSoonProducts = Array.isArray(products) ? products.filter(p => {
-    if (!p?.expiry_date) return false;
-    const today = new Date();
-    const expiryDate = new Date(p.expiry_date);
-    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
-    return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
-  }).length : 0;
+
+  // Fixed the potential undefined error by adding additional null checks
+  const lowStockProducts = Array.isArray(products) 
+    ? products.filter(p => p && typeof p.quantity === 'number' && typeof p.mst === 'number' && p.quantity <= p.mst).length 
+    : 0;
+    
+  const expiringSoonProducts = Array.isArray(products) 
+    ? products.filter(p => {
+        if (!p || !p.expiry_date) return false;
+        try {
+          const today = new Date();
+          const expiryDate = new Date(p.expiry_date);
+          const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+          return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+        } catch (e) {
+          return false;
+        }
+      }).length 
+    : 0;
 
   // Order metrics with safe defaults
   const totalOrders = Array.isArray(distributorOrders) ? distributorOrders.length : 0;
-  const pendingOrders = Array.isArray(distributorOrders) ? distributorOrders.filter(o => o?.status?.toLowerCase() === 'pending').length : 0;
-  const dispatchedOrders = Array.isArray(distributorOrders) ? distributorOrders.filter(o => o?.status?.toLowerCase() === 'dispatched').length : 0;
-  const deliveredOrders = Array.isArray(distributorOrders) ? distributorOrders.filter(o => o?.status?.toLowerCase() === 'delivered').length : 0;
-  const paidOrders = Array.isArray(distributorOrders) ? distributorOrders.filter(o => o?.status?.toLowerCase() === 'paid').length : 0;
+  const pendingOrders = Array.isArray(distributorOrders) 
+    ? distributorOrders.filter(o => o && o.status && o.status.toLowerCase() === 'pending').length 
+    : 0;
+  const dispatchedOrders = Array.isArray(distributorOrders) 
+    ? distributorOrders.filter(o => o && o.status && o.status.toLowerCase() === 'dispatched').length 
+    : 0;
+  const deliveredOrders = Array.isArray(distributorOrders) 
+    ? distributorOrders.filter(o => o && o.status && o.status.toLowerCase() === 'delivered').length 
+    : 0;
+  const paidOrders = Array.isArray(distributorOrders) 
+    ? distributorOrders.filter(o => o && o.status && o.status.toLowerCase() === 'paid').length 
+    : 0;
 
   // Revenue calculations with safe defaults
   const totalRevenue = Array.isArray(distributorOrders)
-    ? distributorOrders.reduce((sum, order) => sum + (order?.price || order?.request?.price || 0), 0)
+    ? distributorOrders.reduce((sum, order) => {
+        if (!order) return sum;
+        return sum + (typeof order.price === 'number' ? order.price : 
+                     (order.request && typeof order.request.price === 'number' ? order.request.price : 0));
+      }, 0)
     : 0;
 
   const monthlyRevenue = Array.isArray(distributorOrders)
     ? distributorOrders
       .filter(order => {
-        if (!order?.request?.createdAt) return false;
-        const orderDate = new Date(order.request.createdAt);
-        const currentDate = new Date();
-        return orderDate.getMonth() === currentDate.getMonth() &&
-               orderDate.getFullYear() === currentDate.getFullYear();
+        if (!order || !order.request || !order.request.createdAt) return false;
+        try {
+          const orderDate = new Date(order.request.createdAt);
+          const currentDate = new Date();
+          return orderDate.getMonth() === currentDate.getMonth() &&
+                orderDate.getFullYear() === currentDate.getFullYear();
+        } catch (e) {
+          return false;
+        }
       })
-      .reduce((sum, order) => sum + (order?.price || order?.request?.price || 0), 0)
+      .reduce((sum, order) => {
+        if (!order) return sum;
+        return sum + (typeof order.price === 'number' ? order.price : 
+                     (order.request && typeof order.request.price === 'number' ? order.request.price : 0));
+      }, 0)
     : 0;
 
-  // Inventory value
-  const totalInventoryValue = products?.reduce((sum, p) =>
-    sum + ((p?.retail_price || 0) * (p?.quantity || 0)), 0) || 0;
+  // Inventory value with null safety
+  const totalInventoryValue = Array.isArray(products) 
+    ? products.reduce((sum, p) => {
+        if (!p) return sum;
+        const retailPrice = typeof p.retail_price === 'number' ? p.retail_price : 0;
+        const quantity = typeof p.quantity === 'number' ? p.quantity : 0;
+        return sum + (retailPrice * quantity);
+      }, 0) 
+    : 0;
 
-  // Request metrics
-  const totalRequests = requests?.length || 0;
-  const pendingRequests = requests?.filter(r => r?.status === 'PENDING')?.length || 0;
-  const approvedRequests = requests?.filter(r => r?.status === 'APPROVED')?.length || 0;
+  // Request metrics with null safety
+  const totalRequests = Array.isArray(requests) ? requests.length : 0;
+  const pendingRequests = Array.isArray(requests) 
+    ? requests.filter(r => r && r.status === 'PENDING').length 
+    : 0;
+  const approvedRequests = Array.isArray(requests) 
+    ? requests.filter(r => r && r.status === 'APPROVED').length 
+    : 0;
 
-  // Unique retailers count
+  // Unique retailers count with null safety
   const uniqueRetailers = new Set(
-    distributorOrders
-      .filter(order => order?.retailer?.id)
-      .map(order => order.retailer.id)
+    Array.isArray(distributorOrders) 
+      ? distributorOrders
+          .filter(order => order && order.retailer && typeof order.retailer.id !== 'undefined')
+          .map(order => order.retailer.id)
+      : []
   ).size;
 
   return (
@@ -143,7 +233,7 @@ const DistributorDashboard = () => {
                 <Package className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? "..." : totalProducts}</div>
+                <div className="text-2xl font-bold">{totalProducts}</div>
                 <p className="text-xs text-muted-foreground">Active in catalog</p>
               </CardContent>
             </Card>
@@ -154,7 +244,7 @@ const DistributorDashboard = () => {
                 <Users className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? "..." : uniqueRetailers}</div>
+                <div className="text-2xl font-bold">{uniqueRetailers}</div>
                 <p className="text-xs text-muted-foreground">Ordering from you</p>
               </CardContent>
             </Card>
@@ -165,7 +255,7 @@ const DistributorDashboard = () => {
                 <Truck className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? "..." : totalOrders}</div>
+                <div className="text-2xl font-bold">{totalOrders}</div>
                 <p className="text-xs text-muted-foreground">{pendingOrders} pending</p>
               </CardContent>
             </Card>
@@ -176,21 +266,55 @@ const DistributorDashboard = () => {
                 <DollarSign className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${isLoading ? "..." : monthlyRevenue.toLocaleString()}</div>
+                <div className="text-2xl font-bold">${monthlyRevenue.toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground">This month</p>
               </CardContent>
             </Card>
           </div>
 
+          {/* AI Insights */}
+          <div className="mt-8">
+            <Card className="feature-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  AI Insights
+                </CardTitle>
+                <CardDescription>
+                  Powered by Gemini AI
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingInsights ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="animate-spin h-5 w-5 text-primary mr-2" />
+                    <span className="text-sm text-muted-foreground">Generating insights...</span>
+                  </div>
+                ) : aiInsights ? (
+                  <div className="prose prose-sm sm:prose-base text-muted-foreground">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {aiInsights}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-lg bg-accent/20 border border-accent/30">
+                    <p className="text-sm font-medium">No insights available</p>
+                    <p className="text-xs text-muted-foreground">Try adding more products and processing sales</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Secondary Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 mt-8">
             <Card className="feature-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
                 <AlertTriangle className="h-4 w-4 text-destructive" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-destructive">{isLoading ? "..." : lowStockProducts}</div>
+                <div className="text-2xl font-bold text-destructive">{lowStockProducts}</div>
                 <p className="text-xs text-muted-foreground">Need restocking</p>
               </CardContent>
             </Card>
@@ -201,7 +325,7 @@ const DistributorDashboard = () => {
                 <Calendar className="h-4 w-4 text-orange-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-500">{isLoading ? "..." : expiringSoonProducts}</div>
+                <div className="text-2xl font-bold text-orange-500">{expiringSoonProducts}</div>
                 <p className="text-xs text-muted-foreground">Within 30 days</p>
               </CardContent>
             </Card>
@@ -212,7 +336,7 @@ const DistributorDashboard = () => {
                 <TrendingUp className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${isLoading ? "..." : totalInventoryValue.toLocaleString()}</div>
+                <div className="text-2xl font-bold">${totalInventoryValue.toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground">Total worth</p>
               </CardContent>
             </Card>
@@ -223,7 +347,7 @@ const DistributorDashboard = () => {
                 <Clock className="h-4 w-4 text-yellow-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{isLoading ? "..." : pendingRequests}</div>
+                <div className="text-2xl font-bold text-yellow-600">{pendingRequests}</div>
                 <p className="text-xs text-muted-foreground">Need review</p>
               </CardContent>
             </Card>
@@ -411,7 +535,11 @@ const DistributorDashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              <DistributorDashboardCharts />
+              <DistributorDashboardCharts 
+                products={products || []} 
+                orders={distributorOrders || []} 
+                requests={requests || []} 
+              />
             )}
           </div>
         </div>
@@ -421,4 +549,3 @@ const DistributorDashboard = () => {
 };
 
 export default DistributorDashboard;
-
