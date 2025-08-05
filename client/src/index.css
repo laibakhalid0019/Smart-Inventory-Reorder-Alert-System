@@ -148,9 +148,6 @@ All colors MUST be HSL.
     @apply text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent;
   }
   
-  .feature-card {
-    @apply bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-medium)] transition-all duration-300 hover:scale-105;
-  }
 
   /* Override scaling animation for specific cards */
   .no-scale {
