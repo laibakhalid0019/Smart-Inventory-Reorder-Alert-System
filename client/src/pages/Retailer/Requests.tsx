@@ -12,11 +12,20 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Trash2, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { FileText, Trash2, Clock, CheckCircle, XCircle, Loader2, FilePdf } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RootState } from '@/Redux/Store';
 import { fetchRequests, deleteRequest } from '@/Redux/Store/requestsSlice';
 import type { AppDispatch } from '@/Redux/Store';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+// Add this for TypeScript support of jspdf-autotable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 const Requests = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -90,6 +99,59 @@ const Requests = () => {
     });
   };
 
+  const exportToPDF = () => {
+    // Create a new PDF document
+    const doc = new jsPDF();
+    const currentDate = new Date().toLocaleDateString();
+
+    // Add title and date
+    doc.setFontSize(18);
+    doc.text('Requests Report', 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Generated on: ${currentDate}`, 14, 30);
+
+    // Prepare data for the table
+    const tableColumn = ['ID', 'Distributor', 'Product', 'Quantity', 'Price', 'Created At', 'Status'];
+    const tableRows = requests.map(request => [
+      request.requestId,
+      request.distributor.username,
+      request.product.name,
+      request.quantity,
+      `$${request.price?.toFixed(2)}`,
+      formatDate(request.createdAt),
+      request.status
+    ]);
+
+    // Generate the PDF table
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 40,
+      styles: {
+        fontSize: 10,
+        cellPadding: 3,
+        lineColor: [200, 200, 200],
+      },
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+      margin: { top: 40 },
+    });
+
+    // Save the PDF
+    doc.save(`requests_report_${new Date().toISOString().slice(0,10)}.pdf`);
+
+    toast({
+      title: 'Export successful',
+      description: 'Your requests have been exported as PDF.',
+    });
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status.toUpperCase()) {
       case 'PENDING':
@@ -143,15 +205,26 @@ const Requests = () => {
                   <FileText className="h-5 w-5 text-primary" />
                   Request History
                 </span>
-                <Button
-                  onClick={handlePrintPDF}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  disabled={requests.length === 0 || loading}
-                >
-                  <FileText className="h-4 w-4" />
-                  Export as CSV
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handlePrintPDF}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    disabled={requests.length === 0 || loading}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Export as CSV
+                  </Button>
+                  <Button
+                    onClick={exportToPDF}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    disabled={requests.length === 0 || loading}
+                  >
+                    <FilePdf className="h-4 w-4" />
+                    Export as PDF
+                  </Button>
+                </div>
               </CardTitle>
               <CardDescription>
                 All your requests to distributors with current status

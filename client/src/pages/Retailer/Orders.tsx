@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { FileText, CreditCard, Package, Truck, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { FileText, CreditCard, Package, Truck, CheckCircle, Clock, Loader2, FilePdf } from 'lucide-react';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { loadStripe } from '@stripe/stripe-js';
@@ -28,6 +28,15 @@ import StripePaymentForm from '@/components/StripePaymentForm';
 import { RootState } from '@/Redux/Store';
 import { fetchOrders, processPayment, updateOrderStatus } from '@/Redux/Store/ordersSlice';
 import type { AppDispatch } from '@/Redux/Store';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+// Add this for TypeScript support of jspdf-autotable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 // Initialize Stripe with your public key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY || 'your-public-key-here');
@@ -170,39 +179,38 @@ const Orders = () => {
   };
 
   const handlePrintPDF = () => {
-    // Convert orders to CSV content
-    const headers = ['Order ID', 'Order Number', 'Distributor', 'Product', 'Quantity', 'Price', 'Status', 'Dispatched At', 'Delivered At'];
-    const csvContent = [
-      headers.join(','),
-      ...orders.map(order => [
-        order.orderId,
+    const doc = new jsPDF();
+
+    // Add title
+    doc.setFontSize(18);
+    doc.text('Order Report', 14, 22);
+
+    // Add table with auto page break
+    doc.autoTable({
+      startY: 30,
+      head: [['Order ID', 'Order Number', 'Distributor', 'Product', 'Quantity', 'Price', 'Status', 'Dispatched At', 'Delivered At']],
+      body: orders.map(order => [
+        order.orderId.toString(),
         order.orderNumber,
         order.distributor.username,
         order.product.name,
-        order.quantity,
-        order.price,
+        order.quantity.toString(),
+        `$${order.price.toFixed(2)}`,
         order.status,
-        order.dispatchedAt ? new Date(order.dispatchedAt).toLocaleDateString() : 'N/A',
-        order.deliveredAt ? new Date(order.deliveredAt).toLocaleDateString() : 'N/A'
-      ].join(','))
-    ].join('\n');
+        order.dispatchedAt ? new Date(order.dispatchedAt).toLocaleString() : 'N/A',
+        order.deliveredAt ? new Date(order.deliveredAt).toLocaleString() : 'N/A'
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [22, 160, 133] },
+      margin: { top: 25, right: 10, bottom: 10, left: 10 },
+    });
 
-    // Create a Blob containing the CSV data
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-
-    // Create a download link and trigger it
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `orders_${new Date().toISOString().slice(0,10)}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Save the PDF
+    doc.save(`order_report_${new Date().toISOString().slice(0,10)}.pdf`);
 
     toast({
       title: 'Export successful',
-      description: 'Your orders have been exported as CSV.',
+      description: 'Your orders have been exported as PDF.',
     });
   };
 
@@ -270,8 +278,8 @@ const Orders = () => {
                   className="flex items-center gap-2"
                   disabled={orders.length === 0 || loading}
                 >
-                  <FileText className="h-4 w-4" />
-                  Export as CSV
+                  <FilePdf className="h-4 w-4" />
+                  Export as PDF
                 </Button>
               </CardTitle>
               <CardDescription>

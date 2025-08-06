@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 
 import {
-  Plus, FileText, Filter, Package, Smartphone, Heart, ShirtIcon, Edit2, Trash2, Loader2
+  Plus, FileText, Filter, Package, Smartphone, Heart, ShirtIcon, Edit2, Trash2, Loader2, FilePdf
 } from 'lucide-react';
 import RetailerNavigation from '@/components/RetailerNavigation';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +30,15 @@ import {
   updateCategories,
   filterStock
 } from '@/Redux/Store/stockSlice';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+// Add this for TypeScript support of jspdf-autotable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 interface Product {
   id: number;
@@ -321,6 +330,62 @@ const StockDisplay = () => {
 
   };
 
+  const exportToPDF = () => {
+    console.log('Generating PDF file...');
+
+    // Create a new PDF document
+    const doc = new jsPDF();
+    const currentDate = new Date().toLocaleDateString();
+
+    // Add title and date
+    doc.setFontSize(18);
+    doc.text('Inventory Stock Report', 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Generated on: ${currentDate}`, 14, 30);
+
+    // Prepare table data
+    const tableColumn = ['ID', 'Category', 'Name', 'Quantity', 'Min Threshold', 'Price', 'Expiry Date'];
+    const tableRows = filteredStock.map(item => [
+      item.id,
+      item.product.category,
+      item.product.name,
+      item.quantity,
+      item.min_threshold,
+      `$${item.product.retail_price.toFixed(2)}`,
+      item.expiry_date?.slice(0, 10) || 'N/A'
+    ]);
+
+    // Generate PDF table
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 40,
+      styles: {
+        fontSize: 10,
+        cellPadding: 3,
+        lineColor: [200, 200, 200],
+      },
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+      margin: { top: 40 },
+    });
+
+    // Save PDF
+    doc.save(`inventory-stock-report_${new Date().toISOString().slice(0,10)}.pdf`);
+
+    toast({
+      title: "PDF Generated",
+      description: "The stock inventory PDF report has been generated successfully.",
+      variant: "default",
+    });
+  };
+
   const filteredStock = stock.filter(item => {
     const categoryMatch = categoryFilter === 'All' || item.product.category === categoryFilter;
     const expiredMatch = !expiredFilter || isExpired(item.expiry_date);
@@ -351,10 +416,16 @@ const StockDisplay = () => {
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
                 <span className="flex items-center gap-2"><Filter className="h-5 w-5" /> Filters & Actions</span>
-                <Button onClick={handlePrintPDF} variant="outline" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Print CSV
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={handlePrintPDF} variant="outline" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Export as CSV
+                  </Button>
+                  <Button onClick={exportToPDF} variant="outline" className="flex items-center gap-2">
+                    <FilePdf className="h-4 w-4" />
+                    Export as PDF
+                  </Button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
