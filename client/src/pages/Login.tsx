@@ -110,7 +110,7 @@ const Login = () => {
               className="mb-4 hover:bg-accent/20"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
+            Back
           </Button>
 
           <div className="text-center">

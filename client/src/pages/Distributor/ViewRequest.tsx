@@ -383,7 +383,7 @@ const ViewRequest = () => {
                                   </Button>
                                 </>
                               )}
-                              {request.status === 'ACCEPTED' && !generatedOrders.includes(request.requestId) && (
+                              {request.status === 'ACCEPTED' && request.orderCheck === false && (
                                 <Button
                                   size="sm"
                                   onClick={() => handleGenerateOrder(request)}
@@ -393,16 +393,17 @@ const ViewRequest = () => {
                                   Generate Order
                                 </Button>
                               )}
-                              {request.status === 'ACCEPTED' && generatedOrders.includes(request.requestId) && (
+                              {request.status === 'ACCEPTED' && request.orderCheck === true && (
                                 <Button
                                   size="sm"
                                   onClick={handleViewOrders}
                                   className="bg-blue-600 hover:bg-blue-700 text-white transition-all hover:scale-105"
                                 >
                                   <Eye className="h-3 w-3 mr-1" />
-                                  View Order
+                                  Order Generated
                                 </Button>
                               )}
+                              {/* No button shown if orderCheck is null */}
                             </div>
                           </TableCell>
                         </TableRow>
