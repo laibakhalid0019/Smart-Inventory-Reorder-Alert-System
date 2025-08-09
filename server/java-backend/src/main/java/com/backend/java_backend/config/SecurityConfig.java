@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers("/delivery/**").hasAuthority("DELIVERY")
                         .requestMatchers("/retailer/**").hasAuthority("RETAILER")
                         .requestMatchers("/distributor/**").hasAuthority("DISTRIBUTOR")
+                        .requestMatchers("/api/gemini/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);

@@ -31,6 +31,9 @@ public class Request {
 
     private float price;
 
+    @Column(name = "order-check")
+    private boolean orderCheck;
+
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();

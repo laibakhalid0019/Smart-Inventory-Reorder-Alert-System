@@ -10,6 +10,7 @@ import com.backend.java_backend.Repos.ProductRepo;
 import com.backend.java_backend.Repos.RequestRepo;
 import com.backend.java_backend.Repos.UserRepo;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -47,6 +48,7 @@ public class OrderService {
         return orderRepo.findAllByDeliveryAgent_Id(user.getId());
     }
 
+    @Transactional
     public Order autoCreateOrderFromRequest(Long id, String deliveryAgent) {
         Request request = requestRepo.findByRequestId(id);
         if (request == null) {
@@ -77,6 +79,8 @@ public class OrderService {
             order.setDeliveryAgent(agent);
             order.setPrice(request.getPrice());
 
+            request.setOrderCheck(true);
+            requestRepo.save(request);
            return orderRepo.save(order);
         } catch (Exception e) {
             throw new RuntimeException("Failed to create order from request: " + e.getMessage(), e);
